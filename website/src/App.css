@@ -1,17 +1,19 @@
 .App {
   text-align: center;
+  font-family: 'Quicksand'; 
+  font-weight: 500;
 }
 
-.Load {
+/* .Load {
   height: 40vmin;
   pointer-events: none;
-}
+} */
 
-@media (prefers-reduced-motion: no-preference) {
+/* @media (prefers-reduced-motion: no-preference) {
   .Load {
     animation: Load-spin infinite 10s linear;
   }
-}
+} */
 
 .App-header {
   background-color: navy;
@@ -24,17 +26,17 @@
   color: white;
 }
 
-@keyframes Load-spin {
+/* @keyframes Load-spin {
   from {
     transform: rotate(360deg);
   }
   to {
     transform: rotate(0deg);
   }
-}
+} */
 
 p {
-  color:lightgray;
+  color:#F0F0F0;
   font-size:1.5em;
   font-weight:bold;
 }
