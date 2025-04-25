@@ -1,42 +1,60 @@
-.App {
-  text-align: center;
-  font-family: 'Quicksand'; 
-  font-weight: 500;
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
-/* .Load {
-  height: 40vmin;
-  pointer-events: none;
-} */
-
-/* @media (prefers-reduced-motion: no-preference) {
-  .Load {
-    animation: Load-spin infinite 10s linear;
-  }
-} */
-
-.App-header {
+* {
+  font-family: 'Quicksand'; 
+  font-weight: 500;
   background-color: navy;
-  min-height: 100vh;
+  color:#F0F0F0;
+}
+
+.Home {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   font-size: calc(10px + 2vmin);
-  color: white;
 }
 
-/* @keyframes Load-spin {
-  from {
-    transform: rotate(360deg);
-  }
-  to {
-    transform: rotate(0deg);
-  }
-} */
+.education-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  padding: 2rem;
+}
+
+.education-item {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.education-text h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight:bold;
+  color: #F0F0F0;
+}
+
+.education-text p {
+  margin: 0.3rem 0 0 0;
+  font-size: 1rem;
+  color: #CCCCCC;
+}
 
 p {
-  color:#F0F0F0;
   font-size:1.5em;
+  font-weight:bold;
+}
+
+a {
+  text-decoration:none;
   font-weight:bold;
 }
