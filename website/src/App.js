@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import './App.css';
 
 import Education from './Education.js';
+import WordGame from './WordGame/WordGame.js';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/education" element={<Education />}/>
+          <Route path="/wordgame" element={<WordGame />}/>
         </Routes>
       </div>
 
@@ -30,7 +32,7 @@ function Home() {
       <p>
         Joshua Yin
       </p>
-          Aspiring software engineer interested in cloud and AI/ML.
+        Aspiring software engineer interested in cloud and AI/ML.
     </div>
   );
 }
