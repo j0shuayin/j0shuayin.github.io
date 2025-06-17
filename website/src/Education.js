@@ -6,7 +6,7 @@ function Education() {
     return (
         <div className="education-container">
             <div className="education-item">
-                <img src={logo} alt="" width="50"/>
+                <img src={logo} alt="" width="60"/>
                 <div className="education-text">
                     <h3>M.S. Computer Science</h3>
                     <p>Expected June 2026</p>
@@ -14,10 +14,10 @@ function Education() {
             </div>
 
             <div className="education-item">
-                <img src={logo} alt="" width="50"/>
+                <img src={logo} alt="" width="60"/>
                 <div className="education-text">
                     <h3>B.S. Computer Science</h3>
-                    <p>June 2025</p>
+                    <p>June 2025 (Summa Cum Laude)</p>
                 </div>
             </div>
         </div>
