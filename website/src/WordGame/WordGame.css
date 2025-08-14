@@ -1,29 +1,171 @@
-.game {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 4vmin);
-  font-weight:bold;
+/* General layout for the game setup and active game screens */
+.game, .game-setup {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 20px;
+    box-sizing: border-box;
 }
 
-.score {
-    color:rgb(50, 180, 180);
-    font-weight:bolder;
+/* Header on the setup screen */
+.game-setup h1 {
+    font-size: calc(20px + 4vmin);
 }
 
-input {
-    border-color:#F0F0F0;
-    border-style:solid;
+/* Container for the settings sliders */
+.slider-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 80%;
+    max-width: 300px;
+    font-size: calc(10px + 1vmin);
+    font-weight: bold;
+}
+
+.slider-container input[type="range"] {
+    width: 100%;
+    margin-top: 5px;
+}
+
+/* --- Letter Box --- */
+.letter-box-container {
+    position: relative;
+    width: 280px;
+    height: 280px;
+    margin-bottom: 20px;
+}
+
+.polygon-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    fill: none;
+    stroke: #F0F0F0;
+    stroke-width: 2;
+    stroke-linejoin: round;
+}
+
+.letter {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    background-color: transparent;
+    color: #F0F0F0;
+    transition: background-color 0.2s, color 0.2s;
+    user-select: none;
+    padding: 4px;
+    box-sizing: border-box;
+}
+
+/* --- Letter States --- */
+.letter.gray {
+    color: #676767;
+}
+
+.letter.orange {
+    background-color: #ffc107;
+    color: white;
+    background-clip: content-box;
+}
+
+.letter.green {
+    background-color: #4caf50;
+    color: white;
+    background-clip: content-box;
+}
+
+/* --- Input and Guessed Words --- */
+.word-input {
+    background-color: transparent;
+    border: 2px solid #F0F0F0;
+    color: #F0F0F0;
+    border-radius: 8px;
+    padding: 10px 15px;
     font-size: calc(10px + 2vmin);
+    text-align: center;
+    width: 80%;
+    max-width: 400px;
+    outline: none;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+}
+
+.word-input:focus {
+    border-color: #4caf50;
+}
+
+.guessed-words-container {
+    width: 80%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.guessed-words-container h3 {
+    margin-bottom: 10px;
+    font-size: 18px;
+    color: #CCCCCC;
+}
+
+.guessed-words-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+}
+
+.guessed-word {
+    background-color: rgba(240, 240, 240, 0.1);
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 16px;
+    font-weight: normal;
+}
+
+.win-message {
+    text-align: center;
+    color: #4caf50;
 }
 
 button {
-    width:calc(100px + 2vmin);;
-    height:calc(20px + 2vmin);;
-    font-weight:bold;
-    font-size:15px;
-    border-color:#F0F0F0;
-    border-style:solid;
+    width: calc(120px + 2vmin);
+    height: calc(30px + 2vmin);
+    font-weight: bold;
+    font-size: 16px;
+    color: #F0F0F0;
+    border: 2px solid #F0F0F0;
+    background-color: transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+button:hover {
+    background-color: #F0F0F0;
+    color: navy;
+}
+
+/* --- Styles for Inline Error Message --- */
+.message-area {
+    height: 1.5em; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.error-message {
+    color: #FF5252;
+    font-weight: bold;
+    font-size: 16px;
+    margin: 0;
 }
