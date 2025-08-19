@@ -9,16 +9,19 @@ function generateLetters(numSides, lettersPerSide) {
     if (totalLetters <= 0 || totalLetters > 26) return [];
 
     const vowels = 'AEIOU'.split('');
-    const consonants = 'BCDFGHJKLMNPQRSTVWXYZ'.split('');
+    const consonants = 'BBCCCDDDFFFGGGHHHJKLLLMMMNNNPPQRRRSSSTTTVVWWWXYYYZ'.split('');
 
     let guaranteedVowels = [];
-    while (guaranteedVowels.length < 2 && vowels.length > 0) {
+    while (guaranteedVowels.length < 3 && vowels.length > 0) {
         const randIndex = Math.floor(Math.random() * vowels.length);
         guaranteedVowels.push(vowels.splice(randIndex, 1)[0]);
     }
     
     const remainingLettersCount = totalLetters - guaranteedVowels.length;
-    const remainingChars = [...vowels, ...consonants].sort(() => 0.5 - Math.random());
+    let remainingChars = [...vowels, ...consonants].sort(() => 0.5 - Math.random());
+
+    let s = new Set(remainingChars);
+    remainingChars = [...s];
     
     const allChars = [...guaranteedVowels, ...remainingChars.slice(0, remainingLettersCount)]
         .sort(() => 0.5 - Math.random());
