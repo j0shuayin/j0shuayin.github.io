@@ -4,10 +4,10 @@ import wordlistUrl from './wordlist.txt';
 import seedwords60Url from './seedwords_60.txt';
 import seedwords70Url from './seedwords_70.txt';
 import seedwords80Url from './seedwords_80.txt';
-import frequent4Text from './frequent_4_1000.txt';
-import frequent5Text from './frequent_5_1000.txt';
-import frequent6Text from './frequent_6_750.txt';
-import frequent7Text from './frequent_7_500.txt';
+import frequent4Url from './frequent_4_1000.txt';
+import frequent5Url from './frequent_5_1000.txt';
+import frequent6Url from './frequent_6_750.txt';
+import frequent7Url from './frequent_7_500.txt';
 import {
     buildTrieAndFrequencies,
     buildSeedWordsByTier,
@@ -42,12 +42,15 @@ function parseWordSet(text) {
     );
 }
 
-const FREQUENT_WORDS = new Set([
-    ...parseWordSet(frequent4Text),
-    ...parseWordSet(frequent5Text),
-    ...parseWordSet(frequent6Text),
-    ...parseWordSet(frequent7Text),
-]);
+function buildFrequentWordSet(...texts) {
+    const words = new Set();
+    for (const text of texts) {
+        for (const word of parseWordSet(text)) {
+            words.add(word);
+        }
+    }
+    return words;
+}
 
 function formatTime(ms) {
     const totalSec = Math.floor(ms / 1000);
@@ -256,6 +259,7 @@ function WordList({
     words,
     foundSet,
     showMissedStyle,
+    frequentWords,
     seedWord,
     hoverWord,
     onWordHover,
@@ -285,7 +289,7 @@ function WordList({
                                 if (showMissedStyle) {
                                     if (isFound) {
                                         bubbleClass += ' found';
-                                    } else if (FREQUENT_WORDS.has(word)) {
+                                    } else if (frequentWords?.has(word)) {
                                         bubbleClass += ' frequent';
                                     } else {
                                         bubbleClass += ' missed';
@@ -323,6 +327,7 @@ function WordTrainer() {
         tier70: [],
         tier80: [],
     });
+    const [frequentWords, setFrequentWords] = useState(() => new Set());
     const [minScoreThreshold, setMinScoreThreshold] = useState(MIN_SCORE_SLIDER_DEFAULT);
     const [setupTab, setSetupTab] = useState('standard');
     const [selectedSuffix, setSelectedSuffix] = useState('ing');
@@ -439,12 +444,33 @@ function WordTrainer() {
             fetch(seedwords60Url).then((r) => r.text()),
             fetch(seedwords70Url).then((r) => r.text()),
             fetch(seedwords80Url).then((r) => r.text()),
+            fetch(frequent4Url).then((r) => r.text()),
+            fetch(frequent5Url).then((r) => r.text()),
+            fetch(frequent6Url).then((r) => r.text()),
+            fetch(frequent7Url).then((r) => r.text()),
         ])
-            .then(([wordlistText, seed60Text, seed70Text, seed80Text]) => {
+            .then(([
+                wordlistText,
+                seed60Text,
+                seed70Text,
+                seed80Text,
+                frequent4Text,
+                frequent5Text,
+                frequent6Text,
+                frequent7Text,
+            ]) => {
                 const { trie: root, frequencies: freq } = buildTrieAndFrequencies(wordlistText);
                 setTrie(root);
                 setFrequencies(freq);
                 setSeedWordsByTier(buildSeedWordsByTier(seed60Text, seed70Text, seed80Text));
+                setFrequentWords(
+                    buildFrequentWordSet(
+                        frequent4Text,
+                        frequent5Text,
+                        frequent6Text,
+                        frequent7Text
+                    )
+                );
                 setLoading(false);
             });
     }, []);
@@ -779,6 +805,7 @@ function WordTrainer() {
                             words={sortedAnswerWords}
                             foundSet={guessedSet}
                             showMissedStyle
+                            frequentWords={frequentWords}
                             seedWord={gameMode === 'standard' ? boardSeedWord : null}
                             hoverWord={hoverWord}
                             onWordHover={handleWordHover}
