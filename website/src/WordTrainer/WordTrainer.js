@@ -4,6 +4,10 @@ import wordlistUrl from './wordlist.txt';
 import seedwords60Url from './seedwords_60.txt';
 import seedwords70Url from './seedwords_70.txt';
 import seedwords80Url from './seedwords_80.txt';
+import frequent4Text from './frequent_4_1000.txt';
+import frequent5Text from './frequent_5_1000.txt';
+import frequent6Text from './frequent_6_750.txt';
+import frequent7Text from './frequent_7_500.txt';
 import {
     buildTrieAndFrequencies,
     buildSeedWordsByTier,
@@ -28,6 +32,22 @@ const TIME_UP_NOTICE_MS = 3000;
 const SUFFIX_FADE_MS = 2000;
 const SUFFIX_CYCLE_MS = 4000;
 const HOVER_LETTER_MS = 200;
+
+function parseWordSet(text) {
+    return new Set(
+        text
+            .split('\n')
+            .map((line) => line.trim().toUpperCase())
+            .filter(Boolean)
+    );
+}
+
+const FREQUENT_WORDS = new Set([
+    ...parseWordSet(frequent4Text),
+    ...parseWordSet(frequent5Text),
+    ...parseWordSet(frequent6Text),
+    ...parseWordSet(frequent7Text),
+]);
 
 function formatTime(ms) {
     const totalSec = Math.floor(ms / 1000);
@@ -263,7 +283,13 @@ function WordList({
                                 const isFound = foundSet ? foundSet.has(word) : true;
                                 let bubbleClass = 'word-trainer-word-bubble';
                                 if (showMissedStyle) {
-                                    bubbleClass += isFound ? ' found' : ' missed';
+                                    if (isFound) {
+                                        bubbleClass += ' found';
+                                    } else if (FREQUENT_WORDS.has(word)) {
+                                        bubbleClass += ' frequent';
+                                    } else {
+                                        bubbleClass += ' missed';
+                                    }
                                 } else {
                                     bubbleClass += ' found';
                                 }
