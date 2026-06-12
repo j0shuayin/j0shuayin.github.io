@@ -1,16 +1,20 @@
 {
   "files": {
-    "main.css": "/static/css/main.b9a4f8a0.css",
-    "main.js": "/static/js/main.d85e8f5e.js",
+    "main.css": "/static/css/main.b44012b4.css",
+    "main.js": "/static/js/main.a6432e8b.js",
     "static/js/787.71e672d5.chunk.js": "/static/js/787.71e672d5.chunk.js",
     "static/media/words_hard.txt": "/static/media/words_hard.dc7713b0d96adc6039e8.txt",
+    "static/media/wordlist.txt": "/static/media/wordlist.e06289c3fae5b954c26e.txt",
+    "static/media/seedwords_60.txt": "/static/media/seedwords_60.11821b5cc02dce91c809.txt",
+    "static/media/seedwords_70.txt": "/static/media/seedwords_70.d40f630e85341e52f202.txt",
+    "static/media/seedwords_80.txt": "/static/media/seedwords_80.abd3bbfd9176142a60ed.txt",
     "index.html": "/index.html",
-    "main.b9a4f8a0.css.map": "/static/css/main.b9a4f8a0.css.map",
-    "main.d85e8f5e.js.map": "/static/js/main.d85e8f5e.js.map",
+    "main.b44012b4.css.map": "/static/css/main.b44012b4.css.map",
+    "main.a6432e8b.js.map": "/static/js/main.a6432e8b.js.map",
     "787.71e672d5.chunk.js.map": "/static/js/787.71e672d5.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.b9a4f8a0.css",
-    "static/js/main.d85e8f5e.js"
+    "static/css/main.b44012b4.css",
+    "static/js/main.a6432e8b.js"
   ]
 }
