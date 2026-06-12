@@ -1,0 +1,327 @@
+.word-trainer-setup,
+.word-trainer-game {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 20px;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.word-trainer-game {
+    position: relative;
+}
+
+.word-trainer-setup h1 {
+    font-size: calc(20px + 4vmin);
+    margin: 0;
+}
+
+.word-trainer-setup .slider-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 80%;
+    max-width: 320px;
+    font-size: calc(10px + 1vmin);
+    font-weight: bold;
+}
+
+.word-trainer-setup .slider-container input[type="range"] {
+    width: 100%;
+    margin-top: 8px;
+}
+
+.word-trainer-setup .slider-hint {
+    font-size: 0.85em;
+    font-weight: normal;
+    color: #CCCCCC;
+}
+
+.word-trainer-layout {
+    display: flex;
+    flex: 1;
+    width: 100%;
+    max-width: 1100px;
+    gap: 24px;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 8px;
+}
+
+.word-trainer-sidebar {
+    flex: 1;
+    min-width: 0;
+    max-width: 340px;
+}
+
+.word-trainer-sidebar-left {
+    text-align: left;
+}
+
+.word-trainer-sidebar-right {
+    text-align: left;
+}
+
+.word-trainer-center {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.board-size-options {
+    display: flex;
+    gap: 12px;
+}
+
+.board-size-options button {
+    width: auto;
+    min-width: 100px;
+    padding: 0 20px;
+}
+
+.board-size-options button.selected {
+    background-color: #4caf50;
+    border-color: #4caf50;
+    color: white;
+}
+
+.word-trainer-timer {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    font-size: 14px;
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 1px;
+    color: #CCCCCC;
+    z-index: 1;
+}
+
+.word-trainer-stats {
+    font-size: calc(12px + 1vmin);
+    color: #CCCCCC;
+}
+
+.word-trainer-stats strong {
+    color: #F0F0F0;
+    background-color: transparent;
+}
+
+.board-grid {
+    display: grid;
+    gap: 8px;
+}
+
+.board-grid.size-4 {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.board-grid.size-5 {
+    grid-template-columns: repeat(5, 1fr);
+}
+
+.board-tile {
+    width: calc(48px + 2vmin);
+    height: calc(48px + 2vmin);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(18px + 2vmin);
+    font-weight: bold;
+    border: 2px solid #F0F0F0;
+    border-radius: 8px;
+    background-color: rgba(240, 240, 240, 0.08);
+    color: #F0F0F0;
+    transition: background-color 0.5s ease, border-color 0.5s ease, color 0.5s ease;
+    user-select: none;
+}
+
+.board-tile.highlighted {
+    background-color: #4caf50;
+    border-color: #4caf50;
+    color: white;
+}
+
+.board-tile.highlighted.fading {
+    background-color: rgba(240, 240, 240, 0.08);
+    border-color: #F0F0F0;
+    color: #F0F0F0;
+}
+
+.word-trainer-input {
+    background-color: transparent;
+    border: 2px solid #F0F0F0;
+    color: #F0F0F0;
+    border-radius: 8px;
+    padding: 10px 15px;
+    font-size: calc(10px + 2vmin);
+    text-align: center;
+    width: 100%;
+    max-width: 400px;
+    outline: none;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+}
+
+.word-trainer-input:focus {
+    border-color: #4caf50;
+}
+
+.word-trainer-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.word-trainer-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.word-trainer-actions button {
+    width: auto;
+    min-width: 100px;
+    padding: 0 16px;
+}
+
+.give-up-btn {
+    border-color: #FF5252;
+    color: #FF5252;
+}
+
+.give-up-btn:hover {
+    background-color: #FF5252;
+    color: white;
+}
+
+.word-trainer-word-list h3 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    color: #CCCCCC;
+    position: sticky;
+    top: 0;
+    background-color: navy;
+    padding-bottom: 4px;
+    z-index: 1;
+}
+
+.word-trainer-seed-word {
+    margin: 0 0 12px 0;
+    font-size: 13px;
+    font-weight: normal;
+    color: #CCCCCC;
+}
+
+.word-trainer-seed-word span {
+    font-weight: bold;
+    color: #ffc107;
+    background-color: transparent;
+}
+
+.word-trainer-word-list-scroll {
+    max-height: calc(100vh - 160px);
+    overflow-y: auto;
+}
+
+.word-trainer-length-group {
+    margin-bottom: 14px;
+}
+
+.word-trainer-length-group:last-child {
+    margin-bottom: 0;
+}
+
+.word-trainer-length-header {
+    font-size: 12px;
+    font-weight: bold;
+    color: #999999;
+    margin-bottom: 6px;
+    text-transform: lowercase;
+}
+
+.word-trainer-word-bubbles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+}
+
+.word-trainer-word-bubble {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 14px;
+    font-size: 13px;
+    font-weight: normal;
+    line-height: 1.3;
+    border: 1px solid transparent;
+}
+
+.word-trainer-word-bubble.found {
+    background-color: rgba(50, 205, 50, 0.2);
+    border-color: #32cd32;
+    color: #32cd32;
+}
+
+.word-trainer-word-bubble.missed {
+    background-color: rgba(255, 138, 138, 0.15);
+    border-color: #ff8a8a;
+    color: #ff8a8a;
+}
+
+.word-trainer-message-area {
+    height: 1.5em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.word-trainer-error {
+    color: #FF5252;
+    font-weight: bold;
+    font-size: 16px;
+    margin: 0;
+}
+
+.word-trainer-times-up {
+    color: #ffc107;
+    font-weight: bold;
+    font-size: 16px;
+    margin: 0;
+}
+
+.word-trainer-loading {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(14px + 2vmin);
+}
+
+@media (max-width: 800px) {
+    .word-trainer-layout {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .word-trainer-sidebar {
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .word-trainer-sidebar-right .word-trainer-word-list-scroll,
+    .word-trainer-sidebar-left .word-trainer-word-list-scroll {
+        max-height: 220px;
+    }
+
+    .word-trainer-timer {
+        top: 8px;
+        right: 12px;
+    }
+}

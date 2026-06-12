@@ -4,6 +4,7 @@ import './App.css';
 
 import Education from './Education.js';
 import WordGame from './WordGame/WordGame.js';
+import WordTrainer from './WordTrainer/WordTrainer.js';
 
 function App() {
   return (
@@ -11,7 +12,7 @@ function App() {
       <div className="app-container">
         <header>
           <nav>
-            <Link to="/">Home</Link> | <Link to="/education">Education</Link>
+            <Link to="/">Home</Link> | <Link to="/education">Education</Link> | <Link to="/wordtrainer">Word Trainer</Link>
           </nav>
         </header>
 
@@ -19,6 +20,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/education" element={<Education />}/>
           <Route path="/wordgame" element={<WordGame />}/>
+          <Route path="/wordtrainer" element={<WordTrainer />}/>
         </Routes>
       </div>
 
