@@ -5,6 +5,7 @@ const DIRECTIONS = [
 ];
 
 const MIN_WORD_LENGTH = 3;
+export const COMMON_LETTERS = new Set('ETAOGINSRHDLUCMF'.split(''));
 const FREQUENCY_BALANCE_EXPONENT = 0.72;
 const VOWEL_INDICES = new Set([0, 4, 8, 14, 20]); // A, E, I, O, U
 const VOWEL_WEIGHT_FACTOR = 0.75;
@@ -34,26 +35,44 @@ function createTrieNode() {
 }
 
 const MAX_SEED_WORD_LENGTH = 12;
+const MIN_SEED_WORD_LENGTH = 8;
+
+export function commonLetterRatio(word) {
+    let commonCount = 0;
+    for (const ch of word) {
+        if (COMMON_LETTERS.has(ch)) commonCount++;
+    }
+    return commonCount / word.length;
+}
+
+export function hasAtMostTwoOfAnyLetter(word) {
+    const counts = {};
+    for (const ch of word) {
+        counts[ch] = (counts[ch] || 0) + 1;
+        if (counts[ch] > 2) return false;
+    }
+    return true;
+}
+
+export function isValidSeedWord(word) {
+    return (
+        word.length >= MIN_SEED_WORD_LENGTH &&
+        word.length <= MAX_SEED_WORD_LENGTH &&
+        hasAtMostTwoOfAnyLetter(word)
+    );
+}
 
 export function parseSeedWordsText(text) {
     return text
         .split('\n')
         .map((line) => line.trim().toUpperCase())
-        .filter((word) => word.length >= 8 && word.length <= MAX_SEED_WORD_LENGTH);
+        .filter((word) => isValidSeedWord(word));
 }
 
-export function buildSeedWordsByTier(seed60Text, seed70Text, seed80Text) {
-    return {
-        tier60: parseSeedWordsText(seed60Text),
-        tier70: parseSeedWordsText(seed70Text),
-        tier80: parseSeedWordsText(seed80Text),
-    };
-}
-
-export function getSeedWordsForScore(minScore, seedWordsByTier) {
-    if (minScore >= 400_000) return seedWordsByTier.tier80;
-    if (minScore >= 300_000) return seedWordsByTier.tier70;
-    if (minScore >= SEED_SCORE_THRESHOLD) return seedWordsByTier.tier60;
+export function getSeedWordsForScore(minScore, seedWords) {
+    if (minScore >= SEED_SCORE_THRESHOLD && seedWords.length > 0) {
+        return seedWords;
+    }
     return [];
 }
 
@@ -346,19 +365,19 @@ export function sortWordsByLength(words) {
     });
 }
 
-function generateCandidateBoard(size, weights, minScore, seedWordsByTier) {
-    const seedPool = getSeedWordsForScore(minScore, seedWordsByTier);
-    const useSeed = minScore >= SEED_SCORE_THRESHOLD && seedPool.length > 0;
+function generateCandidateBoard(size, weights, minScore, seedWords) {
+    const seedPool = getSeedWordsForScore(minScore, seedWords);
+    const useSeed = seedPool.length > 0;
     return useSeed
         ? generateSeededBoard(size, weights, seedPool)
         : { board: generateBoard(size, weights), seedWord: null };
 }
 
-export function generatePlayableBoard(size, weights, trie, minScore, seedWordsByTier) {
+export function generatePlayableBoard(size, weights, trie, minScore, seedWords) {
     let best = null;
 
     for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt++) {
-        const { board, seedWord } = generateCandidateBoard(size, weights, minScore, seedWordsByTier);
+        const { board, seedWord } = generateCandidateBoard(size, weights, minScore, seedWords);
         if (hasChainableSameLetterTriple(board)) continue;
 
         const result = solveBoard(board, trie);

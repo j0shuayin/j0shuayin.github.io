@@ -21,7 +21,7 @@ const LENGTH_OUTPUTS = [
     { length: 7, topN: 500, filename: 'frequent_7_500.txt' },
 ];
 
-const EMPTY_SEED_WORDS = { tier60: [], tier70: [], tier80: [] };
+const EMPTY_SEED_WORDS = [];
 
 function generateValidBoard(size, weights, trie, minScore) {
     while (true) {

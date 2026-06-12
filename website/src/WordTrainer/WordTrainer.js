@@ -1,16 +1,14 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import './WordTrainer.css';
 import wordlistUrl from './wordlist.txt';
-import seedwords60Url from './seedwords_60.txt';
 import seedwords70Url from './seedwords_70.txt';
-import seedwords80Url from './seedwords_80.txt';
 import frequent4Url from './frequent_4_1000.txt';
 import frequent5Url from './frequent_5_1000.txt';
 import frequent6Url from './frequent_6_750.txt';
 import frequent7Url from './frequent_7_500.txt';
 import {
     buildTrieAndFrequencies,
-    buildSeedWordsByTier,
+    parseSeedWordsText,
     generatePlayableBoard,
     generateSuffixPlayableBoard,
     findWordPath,
@@ -322,11 +320,7 @@ function WordTrainer() {
     const [loading, setLoading] = useState(true);
     const [trie, setTrie] = useState(null);
     const [frequencies, setFrequencies] = useState(null);
-    const [seedWordsByTier, setSeedWordsByTier] = useState({
-        tier60: [],
-        tier70: [],
-        tier80: [],
-    });
+    const [seedWords, setSeedWords] = useState([]);
     const [frequentWords, setFrequentWords] = useState(() => new Set());
     const [minScoreThreshold, setMinScoreThreshold] = useState(MIN_SCORE_SLIDER_DEFAULT);
     const [setupTab, setSetupTab] = useState('standard');
@@ -441,9 +435,7 @@ function WordTrainer() {
     useEffect(() => {
         Promise.all([
             fetch(wordlistUrl).then((r) => r.text()),
-            fetch(seedwords60Url).then((r) => r.text()),
             fetch(seedwords70Url).then((r) => r.text()),
-            fetch(seedwords80Url).then((r) => r.text()),
             fetch(frequent4Url).then((r) => r.text()),
             fetch(frequent5Url).then((r) => r.text()),
             fetch(frequent6Url).then((r) => r.text()),
@@ -451,9 +443,7 @@ function WordTrainer() {
         ])
             .then(([
                 wordlistText,
-                seed60Text,
                 seed70Text,
-                seed80Text,
                 frequent4Text,
                 frequent5Text,
                 frequent6Text,
@@ -462,7 +452,7 @@ function WordTrainer() {
                 const { trie: root, frequencies: freq } = buildTrieAndFrequencies(wordlistText);
                 setTrie(root);
                 setFrequencies(freq);
-                setSeedWordsByTier(buildSeedWordsByTier(seed60Text, seed70Text, seed80Text));
+                setSeedWords(parseSeedWordsText(seed70Text));
                 setFrequentWords(
                     buildFrequentWordSet(
                         frequent4Text,
@@ -590,7 +580,7 @@ function WordTrainer() {
                     frequencies,
                     trie,
                     minScoreThreshold,
-                    seedWordsByTier
+                    seedWords
                 );
                 setBoard(newBoard);
                 setMaxScore(totalScore);
@@ -603,7 +593,7 @@ function WordTrainer() {
                 setGenerating(false);
             });
         },
-        [trie, frequencies, minScoreThreshold, seedWordsByTier]
+        [trie, frequencies, minScoreThreshold, seedWords]
     );
 
     const startSuffixGame = useCallback(
