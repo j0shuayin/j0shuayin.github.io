@@ -20,6 +20,77 @@
     margin: 0;
 }
 
+.setup-tabs {
+    display: flex;
+    gap: 0;
+    width: 100%;
+    max-width: 400px;
+    border: 2px solid #F0F0F0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.setup-tabs button {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    border-radius: 0;
+    padding: 12px 16px;
+    background-color: transparent;
+    color: #CCCCCC;
+}
+
+.setup-tabs button:not(:last-child) {
+    border-right: 2px solid #F0F0F0;
+}
+
+.setup-tabs button.selected {
+    background-color: #4caf50;
+    color: white;
+}
+
+.setup-tabs button:hover:not(.selected) {
+    background-color: rgba(240, 240, 240, 0.1);
+    color: #F0F0F0;
+}
+
+.word-trainer-setup-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    max-width: 520px;
+    min-height: 200px;
+}
+
+.word-trainer-setup-hint {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: normal;
+    color: #999999;
+}
+
+.suffix-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+}
+
+.suffix-options button {
+    width: auto;
+    min-width: 52px;
+    padding: 0 12px;
+    font-size: 14px;
+}
+
+.suffix-options button.selected {
+    background-color: #ffc107;
+    border-color: #ffc107;
+    color: navy;
+}
+
 .word-trainer-setup .slider-container {
     display: flex;
     flex-direction: column;
@@ -104,8 +175,35 @@
 }
 
 .word-trainer-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
     font-size: calc(12px + 1vmin);
     color: #CCCCCC;
+}
+
+.word-trainer-suffix-label strong {
+    color: #ffc107;
+    background-color: transparent;
+}
+
+.suffix-highlight-toggle,
+.suffix-setup-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: normal;
+    color: #CCCCCC;
+    cursor: pointer;
+}
+
+.suffix-highlight-toggle input,
+.suffix-setup-toggle input {
+    width: auto;
+    height: auto;
+    cursor: pointer;
 }
 
 .word-trainer-stats strong {
@@ -113,9 +211,42 @@
     background-color: transparent;
 }
 
+.board-container {
+    position: relative;
+    display: inline-block;
+}
+
+.board-path-lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    overflow: visible;
+    z-index: 3;
+    background: none !important;
+    background-color: transparent !important;
+}
+
 .board-grid {
     display: grid;
     gap: 8px;
+    position: relative;
+    z-index: 1;
+    background: none !important;
+    background-color: transparent !important;
+}
+
+.board-letters-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 4;
+    pointer-events: none;
+}
+
+.board-letters-overlay .board-tile {
+    background: none !important;
+    border-color: transparent !important;
 }
 
 .board-grid.size-4 {
@@ -127,6 +258,8 @@
 }
 
 .board-tile {
+    position: relative;
+    isolation: isolate;
     width: calc(48px + 2vmin);
     height: calc(48px + 2vmin);
     display: flex;
@@ -142,6 +275,12 @@
     user-select: none;
 }
 
+.board-tile-letter {
+    position: relative;
+    z-index: 2;
+    background-color: transparent;
+}
+
 .board-tile.highlighted {
     background-color: #4caf50;
     border-color: #4caf50;
@@ -149,6 +288,19 @@
 }
 
 .board-tile.highlighted.fading {
+    background-color: rgba(240, 240, 240, 0.08);
+    border-color: #F0F0F0;
+    color: #F0F0F0;
+}
+
+.board-tile.suffix-highlighted {
+    border-color: #ffc107;
+    background-color: rgba(255, 193, 7, 0.22);
+    color: #ffc107;
+    transition: background-color 2s ease, border-color 2s ease, color 2s ease;
+}
+
+.board-tile.suffix-highlighted.fading {
     background-color: rgba(240, 240, 240, 0.08);
     border-color: #F0F0F0;
     color: #F0F0F0;
@@ -273,6 +425,21 @@
     background-color: rgba(255, 138, 138, 0.15);
     border-color: #ff8a8a;
     color: #ff8a8a;
+}
+
+.word-trainer-word-bubble.interactive {
+    cursor: pointer;
+}
+
+.word-trainer-word-bubble.interactive:hover,
+.word-trainer-word-bubble.hovering {
+    filter: brightness(1.15);
+}
+
+.board-tile.preview-highlighted {
+    background-color: #42a5f5;
+    border-color: #42a5f5;
+    color: white;
 }
 
 .word-trainer-message-area {

@@ -5,7 +5,6 @@ const DIRECTIONS = [
 ];
 
 const MIN_WORD_LENGTH = 3;
-const COMMON_LETTERS = new Set('ETAOINSRHDLUCMF'.split(''));
 const FREQUENCY_BALANCE_EXPONENT = 0.72;
 const VOWEL_INDICES = new Set([0, 4, 8, 14, 20]); // A, E, I, O, U
 const VOWEL_WEIGHT_FACTOR = 0.75;
@@ -34,13 +33,28 @@ function createTrieNode() {
     return { children: {}, isWord: false, word: null };
 }
 
-function isValidSeedWord(word) {
-    if (word.length < 8) return false;
-    let commonCount = 0;
-    for (const ch of word) {
-        if (COMMON_LETTERS.has(ch)) commonCount++;
-    }
-    return commonCount / word.length >= 0.8;
+const MAX_SEED_WORD_LENGTH = 12;
+
+export function parseSeedWordsText(text) {
+    return text
+        .split('\n')
+        .map((line) => line.trim().toUpperCase())
+        .filter((word) => word.length >= 8 && word.length <= MAX_SEED_WORD_LENGTH);
+}
+
+export function buildSeedWordsByTier(seed60Text, seed70Text, seed80Text) {
+    return {
+        tier60: parseSeedWordsText(seed60Text),
+        tier70: parseSeedWordsText(seed70Text),
+        tier80: parseSeedWordsText(seed80Text),
+    };
+}
+
+export function getSeedWordsForScore(minScore, seedWordsByTier) {
+    if (minScore >= 400_000) return seedWordsByTier.tier80;
+    if (minScore >= 300_000) return seedWordsByTier.tier70;
+    if (minScore >= SEED_SCORE_THRESHOLD) return seedWordsByTier.tier60;
+    return [];
 }
 
 export function balanceFrequencies(frequencies) {
@@ -54,7 +68,6 @@ export function balanceFrequencies(frequencies) {
 export function buildTrieAndFrequencies(text) {
     const root = createTrieNode();
     const frequencies = new Array(26).fill(0);
-    const seedWords = [];
     const lines = text.split('\n');
 
     for (const line of lines) {
@@ -73,11 +86,9 @@ export function buildTrieAndFrequencies(text) {
         }
         node.isWord = true;
         node.word = word;
-
-        if (isValidSeedWord(word)) seedWords.push(word);
     }
 
-    return { trie: root, frequencies: balanceFrequencies(frequencies), seedWords };
+    return { trie: root, frequencies: balanceFrequencies(frequencies) };
 }
 
 function cellKey(row, col) {
@@ -276,6 +287,49 @@ export function findWordPath(board, word) {
     return null;
 }
 
+function dfsFindAllPaths(board, row, col, word, index, visited, path, results) {
+    if (board[row][col] !== word[index]) return;
+
+    const newPath = [...path, [row, col]];
+    if (index === word.length - 1) {
+        results.push(newPath);
+        return;
+    }
+
+    visited.add(cellKey(row, col));
+    const size = board.length;
+
+    for (const [dr, dc] of DIRECTIONS) {
+        const nr = row + dr;
+        const nc = col + dc;
+        if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
+        if (visited.has(cellKey(nr, nc))) continue;
+        dfsFindAllPaths(board, nr, nc, word, index + 1, visited, newPath, results);
+    }
+
+    visited.delete(cellKey(row, col));
+}
+
+export function findAllSuffixPaths(board, suffix) {
+    const upper = suffix.toUpperCase();
+    const size = board.length;
+    const results = [];
+
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+            dfsFindAllPaths(board, r, c, upper, 0, new Set(), [], results);
+        }
+    }
+
+    const seen = new Set();
+    return results.filter((path) => {
+        const key = path.map(([pr, pc]) => cellKey(pr, pc)).join('|');
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
+
 export function isWordInTrie(trie, word) {
     let node = trie;
     for (const ch of word) {
@@ -292,18 +346,19 @@ export function sortWordsByLength(words) {
     });
 }
 
-function generateCandidateBoard(size, weights, minScore, seedWords) {
-    const useSeed = minScore >= SEED_SCORE_THRESHOLD && seedWords.length > 0;
+function generateCandidateBoard(size, weights, minScore, seedWordsByTier) {
+    const seedPool = getSeedWordsForScore(minScore, seedWordsByTier);
+    const useSeed = minScore >= SEED_SCORE_THRESHOLD && seedPool.length > 0;
     return useSeed
-        ? generateSeededBoard(size, weights, seedWords)
+        ? generateSeededBoard(size, weights, seedPool)
         : { board: generateBoard(size, weights), seedWord: null };
 }
 
-export function generatePlayableBoard(size, weights, trie, minScore, seedWords = []) {
+export function generatePlayableBoard(size, weights, trie, minScore, seedWordsByTier) {
     let best = null;
 
     for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt++) {
-        const { board, seedWord } = generateCandidateBoard(size, weights, minScore, seedWords);
+        const { board, seedWord } = generateCandidateBoard(size, weights, minScore, seedWordsByTier);
         if (hasChainableSameLetterTriple(board)) continue;
 
         const result = solveBoard(board, trie);
@@ -312,6 +367,78 @@ export function generatePlayableBoard(size, weights, trie, minScore, seedWords =
             return candidate;
         }
         if (!best || result.totalScore > best.totalScore) {
+            best = candidate;
+        }
+    }
+
+    return best;
+}
+
+export const SUFFIX_OPTIONS = [
+    'es', 'ed', 'ies', 'ng', 'ngs', 'ing', 'er', 'ier', 'est', 'ers',
+];
+
+const MAX_SUFFIX_GENERATION_ATTEMPTS = 200;
+
+function minSuffixWordCount(suffix) {
+    return suffix.length === 2 ? 10 : 6;
+}
+
+export function wordsEndingWithSuffix(words, suffix) {
+    const upper = suffix.toUpperCase();
+    return words.filter((word) => word.endsWith(upper));
+}
+
+function generateSuffixBoard(size, weights, suffix) {
+    const upper = suffix.toUpperCase();
+    const path = generateRandomPath(size, upper.length);
+    if (!path) return null;
+
+    const board = Array.from({ length: size }, () => Array(size).fill(null));
+    for (let i = 0; i < path.length; i++) {
+        const [r, c] = path[i];
+        board[r][c] = upper[i];
+    }
+
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+            if (board[r][c] === null) {
+                board[r][c] = pickWeightedLetter(weights);
+            }
+        }
+    }
+
+    return { board, suffixPath: path };
+}
+
+export function generateSuffixPlayableBoard(size, weights, trie, suffix) {
+    const minCount = minSuffixWordCount(suffix);
+    let best = null;
+
+    for (let attempt = 0; attempt < MAX_SUFFIX_GENERATION_ATTEMPTS; attempt++) {
+        const generated = generateSuffixBoard(size, weights, suffix);
+        if (!generated) continue;
+
+        const { board, suffixPath } = generated;
+        if (hasChainableSameLetterTriple(board)) continue;
+
+        const result = solveBoard(board, trie);
+        const suffixWords = wordsEndingWithSuffix(result.words, suffix);
+        const suffixScore = suffixWords.reduce((sum, w) => sum + wordScore(w), 0);
+        const candidate = {
+            board,
+            suffixPath,
+            suffix: suffix.toUpperCase(),
+            suffixWords,
+            suffixScore,
+            seedWord: null,
+            ...result,
+        };
+
+        if (suffixWords.length >= minCount) {
+            return candidate;
+        }
+        if (!best || suffixWords.length > best.suffixWords.length) {
             best = candidate;
         }
     }
