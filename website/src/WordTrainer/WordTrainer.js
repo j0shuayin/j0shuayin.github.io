@@ -414,7 +414,7 @@ function WordTrainer() {
         let words;
         if (gameMode === 'suffix' && boardSuffix) {
             const suffixWords = wordsEndingWithSuffix(allBoardWords, boardSuffix);
-            const extensions = getSuffixExtensionWords(allBoardWords, boardSuffix, board);
+            const extensions = getSuffixExtensionWords(allBoardWords, boardSuffix);
             words = [...suffixWords, ...extensions];
         } else if (gameMode === 'double' && boardDoublePair) {
             words = wordsContainingDoublePair(allBoardWords, boardDoublePair);
@@ -422,7 +422,7 @@ function WordTrainer() {
             words = allBoardWords.filter((w) => w.length >= 4);
         }
         return sortWordsByLength(words);
-    }, [allBoardWords, gameMode, boardSuffix, boardDoublePair, board]);
+    }, [allBoardWords, gameMode, boardSuffix, boardDoublePair]);
 
     const targetWordsSet = useMemo(() => {
         if (gameMode === 'suffix' && boardSuffix) {
@@ -438,8 +438,8 @@ function WordTrainer() {
         if (gameMode !== 'suffix' || !boardSuffix || board.length === 0) {
             return new Set();
         }
-        return new Set(getSuffixExtensionWords(allBoardWords, boardSuffix, board));
-    }, [allBoardWords, boardSuffix, board, gameMode]);
+        return new Set(getSuffixExtensionWords(allBoardWords, boardSuffix));
+    }, [allBoardWords, boardSuffix, gameMode]);
 
     const isTrainerMode = gameMode === 'suffix' || gameMode === 'double';
 

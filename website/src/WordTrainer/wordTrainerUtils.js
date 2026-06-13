@@ -500,8 +500,9 @@ export function wordsContainingDoublePair(words, doublePair) {
     return words.filter((word) => word.includes(upper));
 }
 
-export function getSuffixExtensionWords(allBoardWords, suffix, board) {
+export function getSuffixExtensionWords(allBoardWords, suffix) {
     const upper = suffix.toUpperCase();
+    const boardWordSet = new Set(allBoardWords);
     const extensions = [];
 
     for (const extended of allBoardWords) {
@@ -511,7 +512,7 @@ export function getSuffixExtensionWords(allBoardWords, suffix, board) {
         const stem = extended.slice(0, -1);
         if (stem.length < MIN_WORD_LENGTH) continue;
         if (!stem.endsWith(upper)) continue;
-        if (!findWordPath(board, stem)) continue;
+        if (!boardWordSet.has(stem)) continue;
 
         extensions.push(extended);
     }
