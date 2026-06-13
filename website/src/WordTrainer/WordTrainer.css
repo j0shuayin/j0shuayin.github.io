@@ -24,7 +24,7 @@
     display: flex;
     gap: 0;
     width: 100%;
-    max-width: 400px;
+    max-width: 480px;
     border: 2px solid #F0F0F0;
     border-radius: 8px;
     overflow: hidden;
@@ -431,6 +431,18 @@
     background-color: rgba(255, 193, 7, 0.15);
     border-color: #ffc107;
     color: #ffc107;
+}
+
+.word-trainer-word-bubble.extension {
+    background-color: rgba(200, 162, 255, 0.15);
+    border-color: #c8a2ff;
+    color: #c8a2ff;
+}
+
+.word-trainer-word-bubble.off-target {
+    background-color: rgba(160, 160, 160, 0.15);
+    border-color: #aaaaaa;
+    color: #aaaaaa;
 }
 
 .word-trainer-word-bubble.interactive {

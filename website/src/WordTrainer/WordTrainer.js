@@ -11,11 +11,15 @@ import {
     parseSeedWordsText,
     generatePlayableBoard,
     generateSuffixPlayableBoard,
+    generateDoublePlayableBoard,
     findWordPath,
     findAllSuffixPaths,
+    findAllDoublePairPaths,
     isWordInTrie,
     sortWordsByLength,
     wordsEndingWithSuffix,
+    wordsContainingDoublePair,
+    getSuffixExtensionWords,
     wordScore,
     MIN_SCORE_SLIDER_MIN,
     MIN_SCORE_SLIDER_MAX,
@@ -23,6 +27,7 @@ import {
     MIN_SCORE_SLIDER_DEFAULT,
     SEED_SCORE_THRESHOLD,
     SUFFIX_OPTIONS,
+    DOUBLE_PAIR_OPTIONS,
 } from './wordTrainerUtils';
 
 const TIME_LIMIT_MS = 80_000;
@@ -69,6 +74,43 @@ function groupWordsByLength(sortedWords) {
         }
     }
     return groups;
+}
+
+function getBubbleClass({
+    word,
+    isFound,
+    showMissedStyle,
+    showFoundListStyle,
+    targetWordsSet,
+    extensionWordsSet,
+    frequentWords,
+}) {
+    let bubbleClass = 'word-trainer-word-bubble';
+
+    if (showFoundListStyle && targetWordsSet) {
+        if (targetWordsSet.has(word)) {
+            bubbleClass += ' found';
+        } else {
+            bubbleClass += ' off-target';
+        }
+        return bubbleClass;
+    }
+
+    if (showMissedStyle) {
+        if (isFound) {
+            bubbleClass += ' found';
+        } else if (extensionWordsSet?.has(word)) {
+            bubbleClass += ' extension';
+        } else if (frequentWords?.has(word)) {
+            bubbleClass += ' frequent';
+        } else {
+            bubbleClass += ' missed';
+        }
+    } else {
+        bubbleClass += ' found';
+    }
+
+    return bubbleClass;
 }
 
 function getPreviewTileCount(path, progress) {
@@ -257,6 +299,9 @@ function WordList({
     words,
     foundSet,
     showMissedStyle,
+    showFoundListStyle,
+    targetWordsSet,
+    extensionWordsSet,
     frequentWords,
     seedWord,
     hoverWord,
@@ -283,18 +328,15 @@ function WordList({
                         <div className="word-trainer-word-bubbles">
                             {groupWords.map((word) => {
                                 const isFound = foundSet ? foundSet.has(word) : true;
-                                let bubbleClass = 'word-trainer-word-bubble';
-                                if (showMissedStyle) {
-                                    if (isFound) {
-                                        bubbleClass += ' found';
-                                    } else if (frequentWords?.has(word)) {
-                                        bubbleClass += ' frequent';
-                                    } else {
-                                        bubbleClass += ' missed';
-                                    }
-                                } else {
-                                    bubbleClass += ' found';
-                                }
+                                let bubbleClass = getBubbleClass({
+                                    word,
+                                    isFound,
+                                    showMissedStyle,
+                                    showFoundListStyle,
+                                    targetWordsSet,
+                                    extensionWordsSet,
+                                    frequentWords,
+                                });
                                 if (hoverWord === word) bubbleClass += ' hovering';
                                 if (isInteractive) bubbleClass += ' interactive';
                                 return (
@@ -325,13 +367,17 @@ function WordTrainer() {
     const [minScoreThreshold, setMinScoreThreshold] = useState(MIN_SCORE_SLIDER_DEFAULT);
     const [setupTab, setSetupTab] = useState('standard');
     const [selectedSuffix, setSelectedSuffix] = useState('ing');
+    const [selectedDoublePair, setSelectedDoublePair] = useState('tt');
     const [gameMode, setGameMode] = useState('standard');
     const [boardSuffix, setBoardSuffix] = useState(null);
+    const [boardDoublePair, setBoardDoublePair] = useState(null);
     const [suffixHighlightEnabled, setSuffixHighlightEnabled] = useState(false);
     const [suffixPathIndex, setSuffixPathIndex] = useState(0);
     const [suffixHighlightFading, setSuffixHighlightFading] = useState(false);
     const [showSuffixWordTotal, setShowSuffixWordTotal] = useState(true);
+    const [showDoubleWordTotal, setShowDoubleWordTotal] = useState(true);
     const [maxSuffixWordCount, setMaxSuffixWordCount] = useState(0);
+    const [maxDoubleWordCount, setMaxDoubleWordCount] = useState(0);
     const [inGame, setInGame] = useState(false);
     const [boardSize, setBoardSize] = useState(4);
     const [board, setBoard] = useState([]);
@@ -356,6 +402,7 @@ function WordTrainer() {
     const timeUpTriggeredRef = useRef(false);
     const currentScoreRef = useRef(0);
     const suffixWordsFoundRef = useRef(0);
+    const doubleWordsFoundRef = useRef(0);
     const gameModeRef = useRef(gameMode);
 
     const guessedSet = useMemo(() => new Set(guessedWords), [guessedWords]);
@@ -364,22 +411,52 @@ function WordTrainer() {
         [guessedWords]
     );
     const sortedAnswerWords = useMemo(() => {
-        const words =
-            gameMode === 'suffix' && boardSuffix
-                ? wordsEndingWithSuffix(allBoardWords, boardSuffix)
-                : allBoardWords.filter((w) => w.length >= 4);
+        let words;
+        if (gameMode === 'suffix' && boardSuffix) {
+            const suffixWords = wordsEndingWithSuffix(allBoardWords, boardSuffix);
+            const extensions = getSuffixExtensionWords(allBoardWords, boardSuffix, board);
+            words = [...suffixWords, ...extensions];
+        } else if (gameMode === 'double' && boardDoublePair) {
+            words = wordsContainingDoublePair(allBoardWords, boardDoublePair);
+        } else {
+            words = allBoardWords.filter((w) => w.length >= 4);
+        }
         return sortWordsByLength(words);
-    }, [allBoardWords, gameMode, boardSuffix]);
+    }, [allBoardWords, gameMode, boardSuffix, boardDoublePair, board]);
 
-    const allSuffixPaths = useMemo(() => {
-        if (gameMode !== 'suffix' || !boardSuffix || board.length === 0) return [];
-        return findAllSuffixPaths(board, boardSuffix);
-    }, [board, boardSuffix, gameMode]);
+    const targetWordsSet = useMemo(() => {
+        if (gameMode === 'suffix' && boardSuffix) {
+            return new Set(wordsEndingWithSuffix(allBoardWords, boardSuffix));
+        }
+        if (gameMode === 'double' && boardDoublePair) {
+            return new Set(wordsContainingDoublePair(allBoardWords, boardDoublePair));
+        }
+        return new Set(sortedAnswerWords);
+    }, [allBoardWords, gameMode, boardSuffix, boardDoublePair, sortedAnswerWords]);
 
-    const activeSuffixPath = useMemo(() => {
-        if (!suffixHighlightEnabled || allSuffixPaths.length === 0) return null;
-        return allSuffixPaths[suffixPathIndex % allSuffixPaths.length];
-    }, [suffixHighlightEnabled, allSuffixPaths, suffixPathIndex]);
+    const suffixExtensionWordsSet = useMemo(() => {
+        if (gameMode !== 'suffix' || !boardSuffix || board.length === 0) {
+            return new Set();
+        }
+        return new Set(getSuffixExtensionWords(allBoardWords, boardSuffix, board));
+    }, [allBoardWords, boardSuffix, board, gameMode]);
+
+    const isTrainerMode = gameMode === 'suffix' || gameMode === 'double';
+
+    const allFeaturePaths = useMemo(() => {
+        if (gameMode === 'suffix' && boardSuffix && board.length > 0) {
+            return findAllSuffixPaths(board, boardSuffix);
+        }
+        if (gameMode === 'double' && boardDoublePair && board.length > 0) {
+            return findAllDoublePairPaths(board, boardDoublePair);
+        }
+        return [];
+    }, [board, boardSuffix, boardDoublePair, gameMode]);
+
+    const activeFeaturePath = useMemo(() => {
+        if (!suffixHighlightEnabled || allFeaturePaths.length === 0) return null;
+        return allFeaturePaths[suffixPathIndex % allFeaturePaths.length];
+    }, [suffixHighlightEnabled, allFeaturePaths, suffixPathIndex]);
 
     const suffixWordsFoundCount = useMemo(() => {
         if (!boardSuffix) return 0;
@@ -387,8 +464,15 @@ function WordTrainer() {
         return guessedWords.filter((w) => w.endsWith(upper)).length;
     }, [guessedWords, boardSuffix]);
 
+    const doubleWordsFoundCount = useMemo(() => {
+        if (!boardDoublePair) return 0;
+        const upper = boardDoublePair.toUpperCase();
+        return guessedWords.filter((w) => w.includes(upper)).length;
+    }, [guessedWords, boardDoublePair]);
+
     currentScoreRef.current = currentScore;
     suffixWordsFoundRef.current = suffixWordsFoundCount;
+    doubleWordsFoundRef.current = doubleWordsFoundCount;
     gameModeRef.current = gameMode;
 
     const handleWordHover = useCallback(
@@ -502,7 +586,11 @@ function WordTrainer() {
     }, [timerRunning]);
 
     useEffect(() => {
-        if (!suffixHighlightEnabled || gameMode !== 'suffix' || allSuffixPaths.length === 0) {
+        if (
+            !suffixHighlightEnabled ||
+            (gameMode !== 'suffix' && gameMode !== 'double') ||
+            allFeaturePaths.length === 0
+        ) {
             setSuffixPathIndex(0);
             setSuffixHighlightFading(false);
             return;
@@ -521,7 +609,7 @@ function WordTrainer() {
                 if (!cancelled) setSuffixHighlightFading(true);
             }, SUFFIX_FADE_MS);
             nextTimeout = setTimeout(() => {
-                if (!cancelled) showConfig((i + 1) % allSuffixPaths.length);
+                if (!cancelled) showConfig((i + 1) % allFeaturePaths.length);
             }, SUFFIX_CYCLE_MS);
         };
 
@@ -531,7 +619,7 @@ function WordTrainer() {
             clearTimeout(fadeOutTimeout);
             clearTimeout(nextTimeout);
         };
-    }, [suffixHighlightEnabled, gameMode, allSuffixPaths]);
+    }, [suffixHighlightEnabled, gameMode, allFeaturePaths]);
 
     useEffect(() => {
         if (!timerRunning || timeUpTriggeredRef.current || elapsedMs < TIME_LIMIT_MS) return;
@@ -540,7 +628,9 @@ function WordTrainer() {
         setTimeUpNotice({
             score: currentScoreRef.current,
             wordsFound: suffixWordsFoundRef.current,
+            doubleWordsFound: doubleWordsFoundRef.current,
             isSuffix: gameModeRef.current === 'suffix',
+            isDouble: gameModeRef.current === 'double',
         });
         const timer = setTimeout(() => setTimeUpNotice(null), TIME_UP_NOTICE_MS);
         return () => clearTimeout(timer);
@@ -571,8 +661,10 @@ function WordTrainer() {
             resetGameState();
             setGameMode('standard');
             setBoardSuffix(null);
+            setBoardDoublePair(null);
             setBoardSeedWord(null);
             setMaxSuffixWordCount(0);
+            setMaxDoubleWordCount(0);
 
             requestAnimationFrame(() => {
                 const { board: newBoard, totalScore, words, seedWord } = generatePlayableBoard(
@@ -603,6 +695,7 @@ function WordTrainer() {
             resetGameState();
             setGameMode('suffix');
             setBoardSuffix(suffix.toUpperCase());
+            setBoardDoublePair(null);
             setBoardSeedWord(null);
 
             requestAnimationFrame(() => {
@@ -614,6 +707,36 @@ function WordTrainer() {
                 setBoard(result.board);
                 setMaxScore(result.totalScore);
                 setMaxSuffixWordCount(result.suffixWords.length);
+                setAllBoardWords(result.words);
+                setBoardSize(size);
+                setInGame(true);
+                timerStartRef.current = Date.now();
+                setTimerRunning(true);
+                setGenerating(false);
+            });
+        },
+        [trie, frequencies]
+    );
+
+    const startDoubleGame = useCallback(
+        (size, doublePair) => {
+            if (!trie || !frequencies) return;
+            setGenerating(true);
+            resetGameState();
+            setGameMode('double');
+            setBoardDoublePair(doublePair.toUpperCase());
+            setBoardSuffix(null);
+            setBoardSeedWord(null);
+
+            requestAnimationFrame(() => {
+                const result = generateDoublePlayableBoard(size, frequencies, trie, doublePair);
+                if (!result) {
+                    setGenerating(false);
+                    return;
+                }
+                setBoard(result.board);
+                setMaxScore(result.totalScore);
+                setMaxDoubleWordCount(result.doubleWords.length);
                 setAllBoardWords(result.words);
                 setBoardSize(size);
                 setInGame(true);
@@ -691,7 +814,13 @@ function WordTrainer() {
                         className={setupTab === 'suffix' ? 'selected' : ''}
                         onClick={() => setSetupTab('suffix')}
                     >
-                        Suffix Trainer
+                        Suffixes
+                    </button>
+                    <button
+                        className={setupTab === 'double' ? 'selected' : ''}
+                        onClick={() => setSetupTab('double')}
+                    >
+                        Doubles
                     </button>
                 </div>
 
@@ -774,6 +903,47 @@ function WordTrainer() {
                             </div>
                         </>
                     )}
+
+                    {setupTab === 'double' && (
+                        <>
+                            <p className="word-trainer-setup-hint">
+                                Boards include an adjacent pair of the chosen letters.
+                            </p>
+                            <div className="suffix-options double-pair-options">
+                                {DOUBLE_PAIR_OPTIONS.map((pair) => (
+                                    <button
+                                        key={pair}
+                                        className={selectedDoublePair === pair ? 'selected' : ''}
+                                        onClick={() => setSelectedDoublePair(pair)}
+                                    >
+                                        {pair}
+                                    </button>
+                                ))}
+                            </div>
+                            <label className="suffix-setup-toggle">
+                                <input
+                                    type="checkbox"
+                                    checked={showDoubleWordTotal}
+                                    onChange={(e) => setShowDoubleWordTotal(e.target.checked)}
+                                />
+                                Show total valid double-letter words on board
+                            </label>
+                            <div className="board-size-options">
+                                <button
+                                    onClick={() => startDoubleGame(4, selectedDoublePair)}
+                                    disabled={generating}
+                                >
+                                    {generating ? 'Generating…' : 'Double Trainer 4×4'}
+                                </button>
+                                <button
+                                    onClick={() => startDoubleGame(5, selectedDoublePair)}
+                                    disabled={generating}
+                                >
+                                    {generating ? 'Generating…' : 'Double Trainer 5×5'}
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
         );
@@ -790,11 +960,14 @@ function WordTrainer() {
                             title={
                                 gameMode === 'suffix' && boardSuffix
                                     ? `Words ending in -${boardSuffix.toLowerCase()}`
+                                    : gameMode === 'double' && boardDoublePair
+                                    ? `Words containing ${boardDoublePair.toLowerCase()}`
                                     : 'All Words (4+ letters)'
                             }
                             words={sortedAnswerWords}
                             foundSet={guessedSet}
                             showMissedStyle
+                            extensionWordsSet={gameMode === 'suffix' ? suffixExtensionWordsSet : null}
                             frequentWords={frequentWords}
                             seedWord={gameMode === 'standard' ? boardSeedWord : null}
                             hoverWord={hoverWord}
@@ -811,11 +984,23 @@ function WordTrainer() {
                                 Suffix: <strong>-{boardSuffix.toLowerCase()}</strong>
                             </span>
                         )}
+                        {gameMode === 'double' && boardDoublePair && (
+                            <span className="word-trainer-suffix-label">
+                                Double: <strong>{boardDoublePair.toLowerCase()}</strong>
+                            </span>
+                        )}
                         {gameMode === 'suffix' ? (
                             <span>
                                 Words found: <strong>{suffixWordsFoundCount}</strong>
                                 {showSuffixWordTotal && (
                                     <> / {maxSuffixWordCount}</>
+                                )}
+                            </span>
+                        ) : gameMode === 'double' ? (
+                            <span>
+                                Words found: <strong>{doubleWordsFoundCount}</strong>
+                                {showDoubleWordTotal && (
+                                    <> / {maxDoubleWordCount}</>
                                 )}
                             </span>
                         ) : (
@@ -832,6 +1017,8 @@ function WordTrainer() {
                                 Time&apos;s up!{' '}
                                 {timeUpNotice.isSuffix
                                     ? `Words found: ${timeUpNotice.wordsFound}`
+                                    : timeUpNotice.isDouble
+                                    ? `Words found: ${timeUpNotice.doubleWordsFound}`
                                     : `Score: ${timeUpNotice.score.toLocaleString()}`}
                             </p>
                         )}
@@ -840,14 +1027,16 @@ function WordTrainer() {
                         )}
                     </div>
 
-                    {gameMode === 'suffix' && !givenUp && (
+                    {(gameMode === 'suffix' || gameMode === 'double') && !givenUp && (
                         <label className="suffix-highlight-toggle">
                             <input
                                 type="checkbox"
                                 checked={suffixHighlightEnabled}
                                 onChange={(e) => setSuffixHighlightEnabled(e.target.checked)}
                             />
-                            Highlight suffix on board
+                            {gameMode === 'suffix'
+                                ? 'Highlight suffix on board'
+                                : 'Highlight double letters on board'}
                         </label>
                     )}
 
@@ -857,7 +1046,11 @@ function WordTrainer() {
                         highlightFading={highlightFading}
                         previewPath={givenUp ? hoverPath : null}
                         previewRevealProgress={givenUp ? hoverRevealProgress : 0}
-                        suffixPath={gameMode === 'suffix' ? activeSuffixPath : null}
+                        suffixPath={
+                            gameMode === 'suffix' || gameMode === 'double'
+                                ? activeFeaturePath
+                                : null
+                        }
                         suffixHighlightEnabled={
                             suffixHighlightEnabled && !givenUp && !hoverWord
                         }
@@ -899,6 +1092,21 @@ function WordTrainer() {
                                     New Suffix 5×5
                                 </button>
                             </>
+                        ) : gameMode === 'double' ? (
+                            <>
+                                <button
+                                    onClick={() => startDoubleGame(4, boardDoublePair)}
+                                    disabled={generating}
+                                >
+                                    New Double 4×4
+                                </button>
+                                <button
+                                    onClick={() => startDoubleGame(5, boardDoublePair)}
+                                    disabled={generating}
+                                >
+                                    New Double 5×5
+                                </button>
+                            </>
                         ) : (
                             <>
                                 <button onClick={() => startNewGame(4)} disabled={generating}>
@@ -913,7 +1121,12 @@ function WordTrainer() {
                 </div>
 
                 <div className="word-trainer-sidebar word-trainer-sidebar-right">
-                    <WordList title="Found Words" words={sortedGuessedWords} />
+                    <WordList
+                        title="Found Words"
+                        words={sortedGuessedWords}
+                        showFoundListStyle={isTrainerMode}
+                        targetWordsSet={isTrainerMode ? targetWordsSet : null}
+                    />
                 </div>
             </div>
         </div>

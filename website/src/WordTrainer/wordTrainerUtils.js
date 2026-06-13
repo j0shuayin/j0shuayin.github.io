@@ -430,6 +430,150 @@ function generateSuffixBoard(size, weights, suffix) {
     return { board, suffixPath: path };
 }
 
+function generateRandomAdjacentPair(size) {
+    for (let attempt = 0; attempt < PATH_GENERATION_ATTEMPTS; attempt++) {
+        const r = Math.floor(Math.random() * size);
+        const c = Math.floor(Math.random() * size);
+        const neighbors = [];
+
+        for (const [dr, dc] of DIRECTIONS) {
+            const nr = r + dr;
+            const nc = c + dc;
+            if (nr >= 0 && nr < size && nc >= 0 && nc < size) {
+                neighbors.push([nr, nc]);
+            }
+        }
+
+        if (neighbors.length === 0) continue;
+
+        const [nr, nc] = neighbors[Math.floor(Math.random() * neighbors.length)];
+        return [[r, c], [nr, nc]];
+    }
+
+    return null;
+}
+
+function normalizePathKey(path) {
+    return path
+        .map(([r, c]) => cellKey(r, c))
+        .sort()
+        .join('|');
+}
+
+export function findAllDoublePairPaths(board, doublePair) {
+    const letter = doublePair[0].toUpperCase();
+    const size = board.length;
+    const results = [];
+    const seen = new Set();
+
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+            if (board[r][c] !== letter) continue;
+
+            for (const [dr, dc] of DIRECTIONS) {
+                const nr = r + dr;
+                const nc = c + dc;
+                if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
+                if (board[nr][nc] !== letter) continue;
+
+                const path = [[r, c], [nr, nc]];
+                const key = normalizePathKey(path);
+                if (seen.has(key)) continue;
+                seen.add(key);
+                results.push(path);
+            }
+        }
+    }
+
+    return results;
+}
+
+export const DOUBLE_PAIR_OPTIONS = [
+    'tt', 'nn', 'rr', 'ss', 'll', 'dd', 'ee', 'oo',
+];
+
+const MAX_DOUBLE_GENERATION_ATTEMPTS = 200;
+const MIN_DOUBLE_WORD_COUNT = 6;
+
+export function wordsContainingDoublePair(words, doublePair) {
+    const upper = doublePair.toUpperCase();
+    return words.filter((word) => word.includes(upper));
+}
+
+export function getSuffixExtensionWords(allBoardWords, suffix, board) {
+    const upper = suffix.toUpperCase();
+    const extensions = [];
+
+    for (const extended of allBoardWords) {
+        if (extended.endsWith(upper)) continue;
+        if (extended.length < upper.length + 2) continue;
+
+        const stem = extended.slice(0, -1);
+        if (stem.length < MIN_WORD_LENGTH) continue;
+        if (!stem.endsWith(upper)) continue;
+        if (!findWordPath(board, stem)) continue;
+
+        extensions.push(extended);
+    }
+
+    return extensions;
+}
+
+function generateDoubleBoard(size, weights, doublePair) {
+    const letter = doublePair[0].toUpperCase();
+    const pair = generateRandomAdjacentPair(size);
+    if (!pair) return null;
+
+    const board = Array.from({ length: size }, () => Array(size).fill(null));
+    for (const [r, c] of pair) {
+        board[r][c] = letter;
+    }
+
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+            if (board[r][c] === null) {
+                board[r][c] = pickWeightedLetter(weights);
+            }
+        }
+    }
+
+    return { board, doublePairPath: pair };
+}
+
+export function generateDoublePlayableBoard(size, weights, trie, doublePair) {
+    let best = null;
+
+    for (let attempt = 0; attempt < MAX_DOUBLE_GENERATION_ATTEMPTS; attempt++) {
+        const generated = generateDoubleBoard(size, weights, doublePair);
+        if (!generated) continue;
+
+        const { board, doublePairPath } = generated;
+        if (hasChainableSameLetterTriple(board)) continue;
+
+        const result = solveBoard(board, trie);
+        const doubleWords = wordsContainingDoublePair(result.words, doublePair);
+        const doubleScore = doubleWords.reduce((sum, w) => sum + wordScore(w), 0);
+        const candidate = {
+            board,
+            doublePairPath,
+            doublePair: doublePair.toUpperCase(),
+            doubleWords,
+            doubleScore,
+            seedWord: null,
+            ...result,
+        };
+
+        if (doubleWords.length >= MIN_DOUBLE_WORD_COUNT) {
+            return candidate;
+        }
+        if (!best || doubleWords.length > best.doubleWords.length) {
+            best = candidate;
+        }
+    }
+
+    return best;
+}
+
 export function generateSuffixPlayableBoard(size, weights, trie, suffix) {
     const minCount = minSuffixWordCount(suffix);
     let best = null;

@@ -12,7 +12,7 @@ function App() {
       <div className="app-container">
         <header>
           <nav>
-            <Link to="/">Home</Link> | <Link to="/education">Education</Link> | <Link to="/wordtrainer">Word Trainer</Link>
+            <Link to="/">Home</Link> | <Link to="/education">Education</Link>
           </nav>
         </header>
 
