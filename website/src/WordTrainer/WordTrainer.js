@@ -4,8 +4,8 @@ import wordlistUrl from './wordlist.txt';
 import seedwords70Url from './seedwords_70.txt';
 import frequent4Url from './frequent_4_1000.txt';
 import frequent5Url from './frequent_5_1000.txt';
-import frequent6Url from './frequent_6_750.txt';
-import frequent7Url from './frequent_7_500.txt';
+import frequent6Url from './frequent_6_1000.txt';
+import frequent7Url from './frequent_7_1000.txt';
 import {
     buildTrieAndFrequencies,
     parseSeedWordsText,
@@ -40,7 +40,7 @@ function parseWordSet(text) {
     return new Set(
         text
             .split('\n')
-            .map((line) => line.trim().toUpperCase())
+            .map((line) => line.trim().split(/\s+/)[0].toUpperCase())
             .filter(Boolean)
     );
 }

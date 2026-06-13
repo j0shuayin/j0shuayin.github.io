@@ -10,15 +10,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const WORDLIST_PATH = join(__dirname, '../src/WordTrainer/wordlist.txt');
 const OUTPUT_DIR = join(__dirname, '../src/WordTrainer');
 
-const BOARD_COUNT = 10_000;
-const MIN_SCORE = 100_000;
+const BOARD_COUNT = 100_000;
+const MIN_SCORE = 50_000;
 const BOARD_SIZE = 4;
 
 const LENGTH_OUTPUTS = [
     { length: 4, topN: 1000, filename: 'frequent_4_1000.txt' },
     { length: 5, topN: 1000, filename: 'frequent_5_1000.txt' },
-    { length: 6, topN: 750, filename: 'frequent_6_750.txt' },
-    { length: 7, topN: 500, filename: 'frequent_7_500.txt' },
+    { length: 6, topN: 1000, filename: 'frequent_6_1000.txt' },
+    { length: 7, topN: 1000, filename: 'frequent_7_1000.txt' },
 ];
 
 const EMPTY_SEED_WORDS = [];
@@ -59,7 +59,7 @@ function main() {
             counts.set(word, (counts.get(word) || 0) + 1);
         }
 
-        if ((i + 1) % 100 === 0 || i === 0) {
+        if ((i + 1) % 1000 === 0 || i === 0) {
             const elapsed = ((Date.now() - start) / 1000).toFixed(1);
             console.log(`Generated ${i + 1}/${BOARD_COUNT} boards (${elapsed}s)`);
         }
@@ -71,7 +71,8 @@ function main() {
         const outputPath = join(OUTPUT_DIR, filename);
         writeFileSync(
             outputPath,
-            ranked.map(([word]) => word).join('\n') + (ranked.length ? '\n' : ''),
+            ranked.map(([word, count]) => `${word} ${count}`).join('\n') +
+                (ranked.length ? '\n' : ''),
             'utf8'
         );
 
