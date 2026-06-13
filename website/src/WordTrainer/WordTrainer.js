@@ -466,8 +466,7 @@ function WordTrainer() {
 
     const doubleWordsFoundCount = useMemo(() => {
         if (!boardDoublePair) return 0;
-        const upper = boardDoublePair.toUpperCase();
-        return guessedWords.filter((w) => w.includes(upper)).length;
+        return wordsContainingDoublePair(guessedWords, boardDoublePair).length;
     }, [guessedWords, boardDoublePair]);
 
     currentScoreRef.current = currentScore;

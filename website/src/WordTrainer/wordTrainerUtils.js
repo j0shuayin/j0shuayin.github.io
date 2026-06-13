@@ -397,7 +397,7 @@ export const SUFFIX_OPTIONS = [
     'es', 'ed', 'ies', 'ng', 'ngs', 'ing', 'er', 'ier', 'est', 'ers',
 ];
 
-const MAX_SUFFIX_GENERATION_ATTEMPTS = 200;
+const MAX_SUFFIX_GENERATION_ATTEMPTS = 100;
 
 function minSuffixWordCount(suffix) {
     return suffix.length === 2 ? 10 : 6;
@@ -492,12 +492,15 @@ export const DOUBLE_PAIR_OPTIONS = [
     'tt', 'nn', 'rr', 'ss', 'll', 'dd', 'ee', 'oo',
 ];
 
-const MAX_DOUBLE_GENERATION_ATTEMPTS = 200;
+const MAX_DOUBLE_GENERATION_ATTEMPTS = 100;
 const MIN_DOUBLE_WORD_COUNT = 6;
+const MIN_TRAINER_WORD_LENGTH = 4;
 
 export function wordsContainingDoublePair(words, doublePair) {
     const upper = doublePair.toUpperCase();
-    return words.filter((word) => word.includes(upper));
+    return words.filter(
+        (word) => word.length >= MIN_TRAINER_WORD_LENGTH && word.includes(upper)
+    );
 }
 
 export function getSuffixExtensionWords(allBoardWords, suffix) {
