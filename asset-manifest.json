@@ -1,22 +1,22 @@
 {
   "files": {
     "main.css": "/static/css/main.32313c4a.css",
-    "main.js": "/static/js/main.7515b87e.js",
+    "main.js": "/static/js/main.d4544574.js",
     "static/js/787.71e672d5.chunk.js": "/static/js/787.71e672d5.chunk.js",
     "static/media/words_hard.txt": "/static/media/words_hard.dc7713b0d96adc6039e8.txt",
     "static/media/wordlist.txt": "/static/media/wordlist.e06289c3fae5b954c26e.txt",
     "static/media/seedwords_70.txt": "/static/media/seedwords_70.e266e0b4f04f8be4fc8f.txt",
-    "static/media/frequent_5_1000.txt": "/static/media/frequent_5_1000.39aaf3f44f9eb5bb698b.txt",
-    "static/media/frequent_6_750.txt": "/static/media/frequent_6_750.b9f60cf19aab921066ab.txt",
-    "static/media/frequent_4_1000.txt": "/static/media/frequent_4_1000.d696181b2221622cebd8.txt",
-    "static/media/frequent_7_500.txt": "/static/media/frequent_7_500.bc6a13c4619d96cc4978.txt",
+    "static/media/frequent_7_1000.txt": "/static/media/frequent_7_1000.d20c32e69bdc2654f179.txt",
+    "static/media/frequent_6_1000.txt": "/static/media/frequent_6_1000.c6766177ec016f1515b5.txt",
+    "static/media/frequent_5_1000.txt": "/static/media/frequent_5_1000.a1af79d727c864f8d839.txt",
+    "static/media/frequent_4_1000.txt": "/static/media/frequent_4_1000.4c19acdaf44d97de736c.txt",
     "index.html": "/index.html",
     "main.32313c4a.css.map": "/static/css/main.32313c4a.css.map",
-    "main.7515b87e.js.map": "/static/js/main.7515b87e.js.map",
+    "main.d4544574.js.map": "/static/js/main.d4544574.js.map",
     "787.71e672d5.chunk.js.map": "/static/js/787.71e672d5.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.32313c4a.css",
-    "static/js/main.7515b87e.js"
+    "static/js/main.d4544574.js"
   ]
 }
