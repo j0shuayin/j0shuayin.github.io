@@ -6,6 +6,11 @@ import Education from './Education.js';
 import WordGame from './WordGame/WordGame.js';
 import WordTrainer from './WordTrainer/WordTrainer.js';
 
+let NumberTrainer = null;
+if (process.env.NODE_ENV === 'development') {
+  NumberTrainer = require('./NumberTrainer/NumberTrainer.js').default;
+}
+
 function App() {
   return (
     <Router>
@@ -21,6 +26,9 @@ function App() {
           <Route path="/education" element={<Education />}/>
           <Route path="/wordgame" element={<WordGame />}/>
           <Route path="/wordtrainer" element={<WordTrainer />}/>
+          {process.env.NODE_ENV === 'development' && NumberTrainer && (
+            <Route path="/numbertrainer" element={<NumberTrainer />}/>
+          )}
         </Routes>
       </div>
 

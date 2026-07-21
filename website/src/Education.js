@@ -9,7 +9,7 @@ function Education() {
                 <img src={logo} alt="" width="60"/>
                 <div className="education-text">
                     <h3>M.S. Computer Science</h3>
-                    <p>Expected June 2026</p>
+                    <p>June 2026</p>
                 </div>
             </div>
 
