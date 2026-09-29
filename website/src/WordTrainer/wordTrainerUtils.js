@@ -666,10 +666,12 @@ const REVERSE_SCORE = 100;
 const ANAGRAM_SCORE = 80;
 const INSERTION_SCORE = 50;
 const REPLACEMENT_SCORE = 60;
-const PLURAL_S_SCORE = 70;
 const ACCEPTS_S_BONUS = 25;
 
 const ALL_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const TARGET_CLUSTER_MIN = 10;
+const TARGET_CLUSTER_MAX = 20;
+const TARGET_CLUSTER_TARGET = 15;
 
 function normalizeToken(token) {
     return token.trim().toUpperCase().replace(/[^A-Z]/g, '');
@@ -815,10 +817,9 @@ export function getRecommendedTargetWords(userWords, wordSet, anagramMap, limit 
                 bump(replaced, REPLACEMENT_SCORE);
             }
         }
-
-        bump(`${word}S`, PLURAL_S_SCORE);
     }
 
+    // Bonus for recommended words that themselves take a trailing S (e.g. RATE → RATES).
     for (const [word, score] of [...scores.entries()]) {
         if (wordSet.has(`${word}S`)) {
             scores.set(word, score + ACCEPTS_S_BONUS);
@@ -832,6 +833,189 @@ export function getRecommendedTargetWords(userWords, wordSet, anagramMap, limit 
         })
         .slice(0, limit)
         .map(([word, score]) => ({ word, score }));
+}
+
+function letterMultiset(word) {
+    const counts = {};
+    for (const ch of word) {
+        counts[ch] = (counts[ch] || 0) + 1;
+    }
+    return counts;
+}
+
+function letterJaccard(a, b) {
+    const ca = letterMultiset(a);
+    const cb = letterMultiset(b);
+    const keys = new Set([...Object.keys(ca), ...Object.keys(cb)]);
+    let intersection = 0;
+    let union = 0;
+    for (const key of keys) {
+        const x = ca[key] || 0;
+        const y = cb[key] || 0;
+        intersection += Math.min(x, y);
+        union += Math.max(x, y);
+    }
+    return union === 0 ? 0 : intersection / union;
+}
+
+function sharedSubstringScore(a, b) {
+    const shorter = a.length <= b.length ? a : b;
+    const longer = a.length <= b.length ? b : a;
+    const seen = new Set();
+    let score = 0;
+    for (let len = Math.min(4, shorter.length); len >= 3; len--) {
+        for (let i = 0; i + len <= shorter.length; i++) {
+            const sub = shorter.slice(i, i + len);
+            if (seen.has(sub)) continue;
+            seen.add(sub);
+            if (longer.includes(sub)) {
+                score += len === 4 ? 18 : 12;
+            }
+        }
+    }
+    return score;
+}
+
+function hammingOrNearEdit(a, b) {
+    if (a === b) return 0;
+    if (Math.abs(a.length - b.length) > 1) return Infinity;
+
+    if (a.length === b.length) {
+        let diffs = 0;
+        for (let i = 0; i < a.length; i++) {
+            if (a[i] !== b[i]) diffs++;
+            if (diffs > 2) return diffs;
+        }
+        return diffs;
+    }
+
+    const shorter = a.length < b.length ? a : b;
+    const longer = a.length < b.length ? b : a;
+    let si = 0;
+    let li = 0;
+    let skipped = 0;
+    while (si < shorter.length && li < longer.length) {
+        if (shorter[si] === longer[li]) {
+            si++;
+            li++;
+        } else {
+            skipped++;
+            if (skipped > 1) return Infinity;
+            li++;
+        }
+    }
+    return skipped + (li < longer.length ? longer.length - li : 0);
+}
+
+export function wordRelatedness(a, b) {
+    const left = a.toUpperCase();
+    const right = b.toUpperCase();
+    if (left === right) return 0;
+
+    let score = 0;
+    if ([...left].reverse().join('') === right) score += 100;
+    if ([...left].sort().join('') === [...right].sort().join('')) score += 80;
+
+    score += Math.round(letterJaccard(left, right) * 40);
+    score += sharedSubstringScore(left, right);
+
+    const near = hammingOrNearEdit(left, right);
+    if (near === 1) score += 60;
+    else if (near === 2) score += 25;
+
+    return score;
+}
+
+/**
+ * Split a target list into mini-lists of ~10–20 closely related words.
+ */
+export function clusterRelatedTargetWords(words) {
+    const remaining = new Set(words.map((w) => w.toUpperCase()).filter(Boolean));
+    if (remaining.size === 0) return [];
+    if (remaining.size <= TARGET_CLUSTER_MAX) {
+        return [[...remaining].sort((a, b) => a.localeCompare(b))];
+    }
+
+    const clusters = [];
+
+    const mostRelatedToPool = (candidate, pool, exclude = null) => {
+        let best = 0;
+        for (const other of pool) {
+            if (other === candidate || other === exclude) continue;
+            best = Math.max(best, wordRelatedness(candidate, other));
+        }
+        return best;
+    };
+
+    while (remaining.size > 0) {
+        if (
+            clusters.length > 0 &&
+            remaining.size < TARGET_CLUSTER_MIN &&
+            clusters[clusters.length - 1].length + remaining.size <= TARGET_CLUSTER_MAX
+        ) {
+            clusters[clusters.length - 1].push(...remaining);
+            clusters[clusters.length - 1].sort((a, b) => a.localeCompare(b));
+            remaining.clear();
+            break;
+        }
+
+        const pool = [...remaining];
+        let seed = pool[0];
+        let seedScore = -1;
+        for (const word of pool) {
+            const total = pool.reduce(
+                (sum, other) => (other === word ? sum : sum + wordRelatedness(word, other)),
+                0
+            );
+            if (total > seedScore) {
+                seedScore = total;
+                seed = word;
+            }
+        }
+
+        const cluster = [seed];
+        remaining.delete(seed);
+
+        const targetSize = Math.min(
+            TARGET_CLUSTER_TARGET,
+            Math.max(TARGET_CLUSTER_MIN, Math.min(TARGET_CLUSTER_MAX, remaining.size + 1))
+        );
+
+        while (cluster.length < targetSize && remaining.size > 0) {
+            let bestWord = null;
+            let bestRel = -1;
+            for (const candidate of remaining) {
+                const rel = mostRelatedToPool(candidate, cluster);
+                if (rel > bestRel) {
+                    bestRel = rel;
+                    bestWord = candidate;
+                }
+            }
+            if (!bestWord) break;
+            if (bestRel <= 0 && cluster.length >= TARGET_CLUSTER_MIN) break;
+            cluster.push(bestWord);
+            remaining.delete(bestWord);
+        }
+
+        while (cluster.length < TARGET_CLUSTER_MIN && remaining.size > 0) {
+            let bestWord = null;
+            let bestRel = -1;
+            for (const candidate of remaining) {
+                const rel = mostRelatedToPool(candidate, cluster);
+                if (rel > bestRel) {
+                    bestRel = rel;
+                    bestWord = candidate;
+                }
+            }
+            if (!bestWord) break;
+            cluster.push(bestWord);
+            remaining.delete(bestWord);
+        }
+
+        clusters.push(cluster.sort((a, b) => a.localeCompare(b)));
+    }
+
+    return clusters;
 }
 
 function isPlaceableTargetWord(word, size) {

@@ -25,6 +25,7 @@ import {
     parseTargetWordListText,
     getRecommendedTargetWords,
     formatTargetWordListForExport,
+    clusterRelatedTargetWords,
     wordScore,
     MIN_SCORE_SLIDER_MIN,
     MIN_SCORE_SLIDER_MAX,
@@ -385,6 +386,8 @@ function WordTrainer() {
     const [selectedSuffix, setSelectedSuffix] = useState('ing');
     const [selectedDoublePair, setSelectedDoublePair] = useState('tt');
     const [targetListText, setTargetListText] = useState(loadStoredTargetListText);
+    const [focusTargetWords, setFocusTargetWords] = useState(null);
+    const [focusClusters, setFocusClusters] = useState(null);
     const [exportNotice, setExportNotice] = useState('');
     const [gameMode, setGameMode] = useState('standard');
     const [boardSuffix, setBoardSuffix] = useState(null);
@@ -486,6 +489,11 @@ function WordTrainer() {
             100
         );
     }, [parsedTargetList.words, dictionaryWordSet, anagramMap]);
+
+    const drillTargetWords = useMemo(() => {
+        if (focusTargetWords && focusTargetWords.length > 0) return focusTargetWords;
+        return parsedTargetList.words;
+    }, [focusTargetWords, parsedTargetList.words]);
 
     const suffixExtensionWordsSet = useMemo(() => {
         if (gameMode !== 'suffix' || !boardSuffix || board.length === 0) {
@@ -817,6 +825,8 @@ function WordTrainer() {
 
     const updateTargetListText = useCallback((text) => {
         setTargetListText(text);
+        setFocusTargetWords(null);
+        setFocusClusters(null);
         setErrorMessage('');
         try {
             localStorage.setItem(TARGET_LIST_STORAGE_KEY, text);
@@ -857,10 +867,16 @@ function WordTrainer() {
         return () => clearTimeout(timer);
     }, [exportNotice]);
 
+    const handleMakeFocusLists = useCallback(() => {
+        if (parsedTargetList.words.length === 0) return;
+        setFocusClusters(clusterRelatedTargetWords(parsedTargetList.words));
+        setFocusTargetWords(null);
+    }, [parsedTargetList.words]);
+
     const startTargetGame = useCallback(
         (size) => {
             if (!trie || !frequencies) return;
-            const { words } = parseTargetWordListText(targetListText);
+            const words = drillTargetWords;
             if (words.length === 0) {
                 setErrorMessage('Paste at least one valid target word (4+ letters).');
                 return;
@@ -892,7 +908,7 @@ function WordTrainer() {
                 setGenerating(false);
             });
         },
-        [trie, frequencies, targetListText]
+        [trie, frequencies, drillTargetWords]
     );
 
     const handleGiveUp = () => {
@@ -1113,18 +1129,74 @@ function WordTrainer() {
                             />
                             <div className="target-list-meta">
                                 <span>
-                                    {parsedTargetList.words.length} word
-                                    {parsedTargetList.words.length === 1 ? '' : 's'} ready
+                                    {drillTargetWords.length} word
+                                    {drillTargetWords.length === 1 ? '' : 's'} ready
+                                    {focusTargetWords
+                                        ? ` (focus of ${parsedTargetList.words.length})`
+                                        : ''}
                                 </span>
+                                <div className="target-list-meta-actions">
+                                    <button
+                                        type="button"
+                                        className="target-export-btn"
+                                        onClick={handleMakeFocusLists}
+                                        disabled={parsedTargetList.words.length < 2}
+                                    >
+                                        Make focus lists
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="target-export-btn"
+                                        onClick={handleExportTargetList}
+                                        disabled={parsedTargetList.words.length === 0}
+                                    >
+                                        Export to clipboard
+                                    </button>
+                                </div>
+                            </div>
+                            {focusTargetWords && (
                                 <button
                                     type="button"
                                     className="target-export-btn"
-                                    onClick={handleExportTargetList}
-                                    disabled={parsedTargetList.words.length === 0}
+                                    onClick={() => setFocusTargetWords(null)}
                                 >
-                                    Export to clipboard
+                                    Clear focus (use full list)
                                 </button>
-                            </div>
+                            )}
+                            {focusClusters && focusClusters.length > 0 && (
+                                <div className="target-focus-lists">
+                                    <h3>Focus lists</h3>
+                                    <p className="word-trainer-setup-hint">
+                                        Related mini-lists (~10–20 words). Pick one to drill.
+                                    </p>
+                                    {focusClusters.map((cluster, index) => (
+                                        <div key={index} className="target-focus-cluster">
+                                            <div className="target-focus-cluster-header">
+                                                <span>
+                                                    Set {index + 1} · {cluster.length} words
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    className="target-export-btn"
+                                                    onClick={() => setFocusTargetWords(cluster)}
+                                                >
+                                                    Focus on this set
+                                                </button>
+                                            </div>
+                                            <div className="target-recommendation-list">
+                                                {cluster.map((word) => (
+                                                    <span
+                                                        key={word}
+                                                        className="target-focus-word"
+                                                    >
+                                                        {word.toLowerCase()}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                             {exportNotice && (
                                 <p className="target-export-notice">{exportNotice}</p>
                             )}
@@ -1149,13 +1221,13 @@ function WordTrainer() {
                             <div className="board-size-options">
                                 <button
                                     onClick={() => startTargetGame(4)}
-                                    disabled={generating || parsedTargetList.words.length === 0}
+                                    disabled={generating || drillTargetWords.length === 0}
                                 >
                                     {generating ? 'Generating…' : 'Target Trainer 4×4'}
                                 </button>
                                 <button
                                     onClick={() => startTargetGame(5)}
-                                    disabled={generating || parsedTargetList.words.length === 0}
+                                    disabled={generating || drillTargetWords.length === 0}
                                 >
                                     {generating ? 'Generating…' : 'Target Trainer 5×5'}
                                 </button>
@@ -1164,9 +1236,10 @@ function WordTrainer() {
                                 <div className="target-recommendations">
                                     <h3>Recommended additions</h3>
                                     <p className="word-trainer-setup-hint">
-                                        Anagrams, reversals, one-letter insertions/replacements,
-                                        and -s forms — top {recommendedTargets.length} by
-                                        relevance.
+                                        Anagrams, reversals, and one-letter
+                                        insertions/replacements — plus a bonus when a
+                                        recommendation itself takes -s. Top{' '}
+                                        {recommendedTargets.length} by relevance.
                                     </p>
                                     <div className="target-recommendation-list">
                                         {recommendedTargets.map(({ word, score }) => (
