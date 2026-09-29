@@ -1,7 +1,7 @@
 {
   "files": {
-    "main.css": "/static/css/main.32313c4a.css",
-    "main.js": "/static/js/main.a2115b41.js",
+    "main.css": "/static/css/main.f8462e0e.css",
+    "main.js": "/static/js/main.bbb0a2c6.js",
     "static/js/787.71e672d5.chunk.js": "/static/js/787.71e672d5.chunk.js",
     "static/media/words_hard.txt": "/static/media/words_hard.dc7713b0d96adc6039e8.txt",
     "static/media/wordlist.txt": "/static/media/wordlist.190672b28dff38ccc25d.txt",
@@ -11,12 +11,12 @@
     "static/media/frequent_5_1000.txt": "/static/media/frequent_5_1000.a1af79d727c864f8d839.txt",
     "static/media/frequent_4_1000.txt": "/static/media/frequent_4_1000.4c19acdaf44d97de736c.txt",
     "index.html": "/index.html",
-    "main.32313c4a.css.map": "/static/css/main.32313c4a.css.map",
-    "main.a2115b41.js.map": "/static/js/main.a2115b41.js.map",
+    "main.f8462e0e.css.map": "/static/css/main.f8462e0e.css.map",
+    "main.bbb0a2c6.js.map": "/static/js/main.bbb0a2c6.js.map",
     "787.71e672d5.chunk.js.map": "/static/js/787.71e672d5.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.32313c4a.css",
-    "static/js/main.a2115b41.js"
+    "static/css/main.f8462e0e.css",
+    "static/js/main.bbb0a2c6.js"
   ]
 }
