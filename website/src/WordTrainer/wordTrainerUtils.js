@@ -82,12 +82,19 @@ export function balanceFrequencies(frequencies) {
 export function buildTrieAndFrequencies(text) {
     const root = createTrieNode();
     const frequencies = new Array(26).fill(0);
+    const wordSet = new Set();
+    const anagramMap = new Map();
     const lines = text.split('\n');
 
     for (const line of lines) {
         const word = line.trim().toUpperCase();
         if (word.length < MIN_WORD_LENGTH) continue;
         if (!hasAtMostNOfAnyLetter(word, MAX_SAME_LETTER_IN_WORDLIST)) continue;
+
+        wordSet.add(word);
+        const signature = [...word].sort().join('');
+        if (!anagramMap.has(signature)) anagramMap.set(signature, []);
+        anagramMap.get(signature).push(word);
 
         for (const ch of word) {
             const idx = ch.charCodeAt(0) - 65;
@@ -103,7 +110,12 @@ export function buildTrieAndFrequencies(text) {
         node.word = word;
     }
 
-    return { trie: root, frequencies: balanceFrequencies(frequencies) };
+    return {
+        trie: root,
+        frequencies: balanceFrequencies(frequencies),
+        wordSet,
+        anagramMap,
+    };
 }
 
 function cellKey(row, col) {
@@ -639,6 +651,237 @@ export function generateSuffixPlayableBoard(size, weights, trie, suffix) {
             return candidate;
         }
         if (!best || suffixWords.length > best.suffixWords.length) {
+            best = candidate;
+        }
+    }
+
+    return best;
+}
+
+const MIN_TARGET_WORD_LENGTH = 4;
+const MAX_TARGET_GENERATION_ATTEMPTS = 200;
+const MIN_TARGET_WORDS_ON_BOARD = 3;
+const TARGET_RECOMMENDATION_LIMIT = 100;
+const REVERSE_SCORE = 100;
+const ANAGRAM_SCORE = 80;
+const INSERTION_SCORE = 50;
+
+function normalizeToken(token) {
+    return token.trim().toUpperCase().replace(/[^A-Z]/g, '');
+}
+
+function canPlaceWordWithCounts(word, letterCounts) {
+    const provisional = { ...letterCounts };
+    for (const ch of word) {
+        provisional[ch] = (provisional[ch] || 0) + 1;
+        if (provisional[ch] > MAX_LETTER_OCCURRENCES_ON_BOARD) return false;
+    }
+    return true;
+}
+
+function generatePathOnEmptyCells(board, length, letterCounts, word) {
+    const size = board.length;
+    if (!canPlaceWordWithCounts(word, letterCounts)) return null;
+
+    for (let attempt = 0; attempt < PATH_GENERATION_ATTEMPTS; attempt++) {
+        const emptyCells = [];
+        for (let r = 0; r < size; r++) {
+            for (let c = 0; c < size; c++) {
+                if (board[r][c] === null) emptyCells.push([r, c]);
+            }
+        }
+        if (emptyCells.length < length) return null;
+
+        const [startR, startC] = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+        const path = [[startR, startC]];
+        const visited = new Set([cellKey(startR, startC)]);
+
+        while (path.length < length) {
+            const [r, c] = path[path.length - 1];
+            const neighbors = [];
+            for (const [dr, dc] of DIRECTIONS) {
+                const nr = r + dr;
+                const nc = c + dc;
+                if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
+                if (board[nr][nc] !== null) continue;
+                const key = cellKey(nr, nc);
+                if (visited.has(key)) continue;
+                neighbors.push([nr, nc]);
+            }
+            if (neighbors.length === 0) break;
+            const [nr, nc] = neighbors[Math.floor(Math.random() * neighbors.length)];
+            path.push([nr, nc]);
+            visited.add(cellKey(nr, nc));
+        }
+
+        if (path.length === length) return path;
+    }
+
+    return null;
+}
+
+function placeWordOnBoard(board, word, path) {
+    for (let i = 0; i < path.length; i++) {
+        const [r, c] = path[i];
+        board[r][c] = word[i];
+    }
+}
+
+/**
+ * Parse a pasted target list.
+ * Supports newline-separated entries, slash alternatives (a/b/c),
+ * and reversal pairs (ante -> etna).
+ */
+export function parseTargetWordListText(text) {
+    const words = new Set();
+    const skipped = [];
+
+    for (const rawLine of text.split('\n')) {
+        const line = rawLine.trim();
+        if (!line) continue;
+
+        const arrowMatch = line.match(/^(.+?)\s*->\s*(.+)$/);
+        const chunks = arrowMatch
+            ? [...arrowMatch[1].split('/'), ...arrowMatch[2].split('/')]
+            : line.split('/');
+
+        for (const chunk of chunks) {
+            const word = normalizeToken(chunk);
+            if (!word) continue;
+            if (word.length < MIN_TARGET_WORD_LENGTH) {
+                skipped.push(word || chunk.trim());
+                continue;
+            }
+            if (!hasAtMostTwoOfAnyLetter(word)) {
+                skipped.push(word);
+                continue;
+            }
+            words.add(word);
+        }
+    }
+
+    return {
+        words: [...words].sort((a, b) => a.localeCompare(b)),
+        skipped: [...new Set(skipped)],
+    };
+}
+
+export function formatTargetWordListForExport(words) {
+    return words
+        .map((w) => w.toLowerCase())
+        .sort((a, b) => a.localeCompare(b))
+        .join('\n');
+}
+
+export function getRecommendedTargetWords(userWords, wordSet, anagramMap, limit = TARGET_RECOMMENDATION_LIMIT) {
+    const userSet = new Set(userWords.map((w) => w.toUpperCase()));
+    const scores = new Map();
+
+    const bump = (word, amount) => {
+        if (!word || userSet.has(word) || !wordSet.has(word)) return;
+        if (word.length < MIN_TARGET_WORD_LENGTH) return;
+        if (!hasAtMostTwoOfAnyLetter(word)) return;
+        scores.set(word, (scores.get(word) || 0) + amount);
+    };
+
+    for (const raw of userSet) {
+        const word = raw.toUpperCase();
+
+        const reversed = [...word].reverse().join('');
+        if (reversed !== word) bump(reversed, REVERSE_SCORE);
+
+        const signature = [...word].sort().join('');
+        const anagrams = anagramMap.get(signature) || [];
+        for (const ana of anagrams) {
+            if (ana !== word) bump(ana, ANAGRAM_SCORE);
+        }
+
+        for (const letter of COMMON_LETTERS) {
+            for (let i = 0; i <= word.length; i++) {
+                const inserted = word.slice(0, i) + letter + word.slice(i);
+                bump(inserted, INSERTION_SCORE);
+            }
+        }
+    }
+
+    return [...scores.entries()]
+        .sort((a, b) => {
+            if (b[1] !== a[1]) return b[1] - a[1];
+            return a[0].localeCompare(b[0]);
+        })
+        .slice(0, limit)
+        .map(([word, score]) => ({ word, score }));
+}
+
+function isPlaceableTargetWord(word, size) {
+    return (
+        word.length >= MIN_TARGET_WORD_LENGTH &&
+        word.length <= size * size &&
+        hasAtMostTwoOfAnyLetter(word)
+    );
+}
+
+function generateTargetBoard(size, weights, targetWords) {
+    const eligible = targetWords.filter((w) => isPlaceableTargetWord(w, size));
+    if (eligible.length === 0) return null;
+
+    const shuffled = [...eligible].sort(() => Math.random() - 0.5);
+    // Prefer longer words first so they get board space.
+    shuffled.sort((a, b) => b.length - a.length || Math.random() - 0.5);
+
+    const board = Array.from({ length: size }, () => Array(size).fill(null));
+    const placed = [];
+    const letterCounts = {};
+
+    for (const word of shuffled) {
+        if (placed.length >= Math.max(MIN_TARGET_WORDS_ON_BOARD + 2, 5)) break;
+        const path = generatePathOnEmptyCells(board, word.length, letterCounts, word);
+        if (!path) continue;
+        placeWordOnBoard(board, word, path);
+        for (const ch of word) {
+            letterCounts[ch] = (letterCounts[ch] || 0) + 1;
+        }
+        placed.push(word);
+    }
+
+    if (placed.length === 0) return null;
+    if (!fillEmptyCells(board, weights)) return null;
+    return { board, placedTargets: placed };
+}
+
+export function wordsFromTargetList(words, targetList) {
+    const targetSet = new Set(targetList.map((w) => w.toUpperCase()));
+    return words.filter((w) => targetSet.has(w));
+}
+
+export function generateTargetPlayableBoard(size, weights, trie, targetWords) {
+    const eligible = targetWords.filter((w) => isPlaceableTargetWord(w, size));
+    if (eligible.length === 0) return null;
+
+    const minCount = Math.min(MIN_TARGET_WORDS_ON_BOARD, eligible.length);
+    let best = null;
+
+    for (let attempt = 0; attempt < MAX_TARGET_GENERATION_ATTEMPTS; attempt++) {
+        const generated = generateTargetBoard(size, weights, eligible);
+        if (!generated) continue;
+
+        const { board } = generated;
+        if (hasMoreThanTwoOfAnyLetterOnBoard(board)) continue;
+        if (hasChainableSameLetterTriple(board)) continue;
+
+        const result = solveBoard(board, trie);
+        const targetOnBoard = wordsFromTargetList(result.words, eligible);
+        const candidate = {
+            board,
+            targetWords: targetOnBoard,
+            seedWord: null,
+            ...result,
+        };
+
+        if (targetOnBoard.length >= minCount) {
+            return candidate;
+        }
+        if (!best || targetOnBoard.length > best.targetWords.length) {
             best = candidate;
         }
     }

@@ -12,6 +12,7 @@ import {
     generatePlayableBoard,
     generateSuffixPlayableBoard,
     generateDoublePlayableBoard,
+    generateTargetPlayableBoard,
     findWordPath,
     findAllSuffixPaths,
     findAllDoublePairPaths,
@@ -19,7 +20,11 @@ import {
     sortWordsByLength,
     wordsEndingWithSuffix,
     wordsContainingDoublePair,
+    wordsFromTargetList,
     getSuffixExtensionWords,
+    parseTargetWordListText,
+    getRecommendedTargetWords,
+    formatTargetWordListForExport,
     wordScore,
     MIN_SCORE_SLIDER_MIN,
     MIN_SCORE_SLIDER_MAX,
@@ -35,6 +40,15 @@ const TIME_UP_NOTICE_MS = 3000;
 const SUFFIX_FADE_MS = 2000;
 const SUFFIX_CYCLE_MS = 4000;
 const HOVER_LETTER_MS = 200;
+const TARGET_LIST_STORAGE_KEY = 'wordTrainer.targetWordList';
+
+function loadStoredTargetListText() {
+    try {
+        return localStorage.getItem(TARGET_LIST_STORAGE_KEY) || '';
+    } catch {
+        return '';
+    }
+}
 
 function parseWordSet(text) {
     return new Set(
@@ -363,14 +377,21 @@ function WordTrainer() {
     const [trie, setTrie] = useState(null);
     const [frequencies, setFrequencies] = useState(null);
     const [seedWords, setSeedWords] = useState([]);
+    const [dictionaryWordSet, setDictionaryWordSet] = useState(() => new Set());
+    const [anagramMap, setAnagramMap] = useState(() => new Map());
     const [frequentWords, setFrequentWords] = useState(() => new Set());
     const [minScoreThreshold, setMinScoreThreshold] = useState(MIN_SCORE_SLIDER_DEFAULT);
     const [setupTab, setSetupTab] = useState('standard');
     const [selectedSuffix, setSelectedSuffix] = useState('ing');
     const [selectedDoublePair, setSelectedDoublePair] = useState('tt');
+    const [targetListText, setTargetListText] = useState(loadStoredTargetListText);
+    const [exportNotice, setExportNotice] = useState('');
     const [gameMode, setGameMode] = useState('standard');
     const [boardSuffix, setBoardSuffix] = useState(null);
     const [boardDoublePair, setBoardDoublePair] = useState(null);
+    const [boardTargetList, setBoardTargetList] = useState([]);
+    const [maxTargetWordCount, setMaxTargetWordCount] = useState(0);
+    const [showTargetWordTotal, setShowTargetWordTotal] = useState(true);
     const [suffixHighlightEnabled, setSuffixHighlightEnabled] = useState(false);
     const [suffixPathIndex, setSuffixPathIndex] = useState(0);
     const [suffixHighlightFading, setSuffixHighlightFading] = useState(false);
@@ -403,6 +424,7 @@ function WordTrainer() {
     const currentScoreRef = useRef(0);
     const suffixWordsFoundRef = useRef(0);
     const doubleWordsFoundRef = useRef(0);
+    const targetWordsFoundRef = useRef(0);
     const gameModeRef = useRef(gameMode);
 
     const guessedSet = useMemo(() => new Set(guessedWords), [guessedWords]);
@@ -418,11 +440,13 @@ function WordTrainer() {
             words = [...suffixWords, ...extensions];
         } else if (gameMode === 'double' && boardDoublePair) {
             words = wordsContainingDoublePair(allBoardWords, boardDoublePair);
+        } else if (gameMode === 'target' && boardTargetList.length > 0) {
+            words = wordsFromTargetList(allBoardWords, boardTargetList);
         } else {
             words = allBoardWords.filter((w) => w.length >= 4);
         }
         return sortWordsByLength(words);
-    }, [allBoardWords, gameMode, boardSuffix, boardDoublePair]);
+    }, [allBoardWords, gameMode, boardSuffix, boardDoublePair, boardTargetList]);
 
     const targetWordsSet = useMemo(() => {
         if (gameMode === 'suffix' && boardSuffix) {
@@ -431,17 +455,47 @@ function WordTrainer() {
         if (gameMode === 'double' && boardDoublePair) {
             return new Set(wordsContainingDoublePair(allBoardWords, boardDoublePair));
         }
+        if (gameMode === 'target' && boardTargetList.length > 0) {
+            return new Set(wordsFromTargetList(allBoardWords, boardTargetList));
+        }
         return new Set(sortedAnswerWords);
-    }, [allBoardWords, gameMode, boardSuffix, boardDoublePair, sortedAnswerWords]);
+    }, [allBoardWords, gameMode, boardSuffix, boardDoublePair, boardTargetList, sortedAnswerWords]);
+
+    const parsedTargetList = useMemo(() => {
+        const parsed = parseTargetWordListText(targetListText);
+        if (dictionaryWordSet.size === 0) return parsed;
+
+        const words = [];
+        const notInDict = [];
+        for (const word of parsed.words) {
+            if (dictionaryWordSet.has(word)) words.push(word);
+            else notInDict.push(word);
+        }
+        return {
+            words,
+            skipped: [...parsed.skipped, ...notInDict],
+        };
+    }, [targetListText, dictionaryWordSet]);
+
+    const recommendedTargets = useMemo(() => {
+        if (parsedTargetList.words.length === 0 || dictionaryWordSet.size === 0) return [];
+        return getRecommendedTargetWords(
+            parsedTargetList.words,
+            dictionaryWordSet,
+            anagramMap,
+            100
+        );
+    }, [parsedTargetList.words, dictionaryWordSet, anagramMap]);
 
     const suffixExtensionWordsSet = useMemo(() => {
         if (gameMode !== 'suffix' || !boardSuffix || board.length === 0) {
             return new Set();
         }
         return new Set(getSuffixExtensionWords(allBoardWords, boardSuffix));
-    }, [allBoardWords, boardSuffix, gameMode]);
+    }, [allBoardWords, boardSuffix, board, gameMode]);
 
-    const isTrainerMode = gameMode === 'suffix' || gameMode === 'double';
+    const isTrainerMode =
+        gameMode === 'suffix' || gameMode === 'double' || gameMode === 'target';
 
     const allFeaturePaths = useMemo(() => {
         if (gameMode === 'suffix' && boardSuffix && board.length > 0) {
@@ -469,9 +523,15 @@ function WordTrainer() {
         return wordsContainingDoublePair(guessedWords, boardDoublePair).length;
     }, [guessedWords, boardDoublePair]);
 
+    const targetWordsFoundCount = useMemo(() => {
+        if (boardTargetList.length === 0) return 0;
+        return wordsFromTargetList(guessedWords, boardTargetList).length;
+    }, [guessedWords, boardTargetList]);
+
     currentScoreRef.current = currentScore;
     suffixWordsFoundRef.current = suffixWordsFoundCount;
     doubleWordsFoundRef.current = doubleWordsFoundCount;
+    targetWordsFoundRef.current = targetWordsFoundCount;
     gameModeRef.current = gameMode;
 
     const handleWordHover = useCallback(
@@ -532,9 +592,12 @@ function WordTrainer() {
                 frequent6Text,
                 frequent7Text,
             ]) => {
-                const { trie: root, frequencies: freq } = buildTrieAndFrequencies(wordlistText);
+                const { trie: root, frequencies: freq, wordSet, anagramMap: anaMap } =
+                    buildTrieAndFrequencies(wordlistText);
                 setTrie(root);
                 setFrequencies(freq);
+                setDictionaryWordSet(wordSet);
+                setAnagramMap(anaMap);
                 setSeedWords(parseSeedWordsText(seed70Text));
                 setFrequentWords(
                     buildFrequentWordSet(
@@ -595,7 +658,6 @@ function WordTrainer() {
             return;
         }
 
-        let index = 0;
         let fadeOutTimeout;
         let nextTimeout;
         let cancelled = false;
@@ -628,8 +690,10 @@ function WordTrainer() {
             score: currentScoreRef.current,
             wordsFound: suffixWordsFoundRef.current,
             doubleWordsFound: doubleWordsFoundRef.current,
+            targetWordsFound: targetWordsFoundRef.current,
             isSuffix: gameModeRef.current === 'suffix',
             isDouble: gameModeRef.current === 'double',
+            isTarget: gameModeRef.current === 'target',
         });
         const timer = setTimeout(() => setTimeUpNotice(null), TIME_UP_NOTICE_MS);
         return () => clearTimeout(timer);
@@ -661,9 +725,11 @@ function WordTrainer() {
             setGameMode('standard');
             setBoardSuffix(null);
             setBoardDoublePair(null);
+            setBoardTargetList([]);
             setBoardSeedWord(null);
             setMaxSuffixWordCount(0);
             setMaxDoubleWordCount(0);
+            setMaxTargetWordCount(0);
 
             requestAnimationFrame(() => {
                 const { board: newBoard, totalScore, words, seedWord } = generatePlayableBoard(
@@ -695,6 +761,7 @@ function WordTrainer() {
             setGameMode('suffix');
             setBoardSuffix(suffix.toUpperCase());
             setBoardDoublePair(null);
+            setBoardTargetList([]);
             setBoardSeedWord(null);
 
             requestAnimationFrame(() => {
@@ -725,6 +792,7 @@ function WordTrainer() {
             setGameMode('double');
             setBoardDoublePair(doublePair.toUpperCase());
             setBoardSuffix(null);
+            setBoardTargetList([]);
             setBoardSeedWord(null);
 
             requestAnimationFrame(() => {
@@ -745,6 +813,86 @@ function WordTrainer() {
             });
         },
         [trie, frequencies]
+    );
+
+    const updateTargetListText = useCallback((text) => {
+        setTargetListText(text);
+        setErrorMessage('');
+        try {
+            localStorage.setItem(TARGET_LIST_STORAGE_KEY, text);
+        } catch {
+            // ignore quota / private mode
+        }
+    }, []);
+
+    const addRecommendedWord = useCallback(
+        (word) => {
+            const upper = word.toUpperCase();
+            if (parsedTargetList.words.includes(upper)) return;
+            const next = parsedTargetList.words.length
+                ? `${formatTargetWordListForExport(parsedTargetList.words)}\n${upper.toLowerCase()}`
+                : upper.toLowerCase();
+            updateTargetListText(next);
+        },
+        [parsedTargetList.words, updateTargetListText]
+    );
+
+    const handleExportTargetList = useCallback(async () => {
+        const payload = formatTargetWordListForExport(parsedTargetList.words);
+        if (!payload) {
+            setExportNotice('Add words before exporting.');
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(payload);
+            setExportNotice(`Copied ${parsedTargetList.words.length} words.`);
+        } catch {
+            setExportNotice('Could not copy to clipboard.');
+        }
+    }, [parsedTargetList.words]);
+
+    useEffect(() => {
+        if (!exportNotice) return;
+        const timer = setTimeout(() => setExportNotice(''), 2500);
+        return () => clearTimeout(timer);
+    }, [exportNotice]);
+
+    const startTargetGame = useCallback(
+        (size) => {
+            if (!trie || !frequencies) return;
+            const { words } = parseTargetWordListText(targetListText);
+            if (words.length === 0) {
+                setErrorMessage('Paste at least one valid target word (4+ letters).');
+                return;
+            }
+
+            setGenerating(true);
+            resetGameState();
+            setGameMode('target');
+            setBoardTargetList(words);
+            setBoardSuffix(null);
+            setBoardDoublePair(null);
+            setBoardSeedWord(null);
+
+            requestAnimationFrame(() => {
+                const result = generateTargetPlayableBoard(size, frequencies, trie, words);
+                if (!result) {
+                    setGenerating(false);
+                    setErrorMessage('Could not generate a board with enough target words.');
+                    return;
+                }
+                setBoard(result.board);
+                setMaxScore(result.totalScore);
+                setMaxTargetWordCount(result.targetWords.length);
+                setAllBoardWords(result.words);
+                setBoardSize(size);
+                setInGame(true);
+                timerStartRef.current = Date.now();
+                setTimerRunning(true);
+                setGenerating(false);
+            });
+        },
+        [trie, frequencies, targetListText]
     );
 
     const handleGiveUp = () => {
@@ -820,6 +968,12 @@ function WordTrainer() {
                         onClick={() => setSetupTab('double')}
                     >
                         Doubles
+                    </button>
+                    <button
+                        className={setupTab === 'target' ? 'selected' : ''}
+                        onClick={() => setSetupTab('target')}
+                    >
+                        Targets
                     </button>
                 </div>
 
@@ -943,6 +1097,93 @@ function WordTrainer() {
                             </div>
                         </>
                     )}
+
+                    {setupTab === 'target' && (
+                        <>
+                            <p className="word-trainer-setup-hint">
+                                Paste words to drill (one per line). Slash groups and reversals
+                                work too — e.g. snath/sneath or ante -&gt; etna.
+                            </p>
+                            <textarea
+                                className="target-list-input"
+                                value={targetListText}
+                                onChange={(e) => updateTargetListText(e.target.value)}
+                                placeholder={'snath/sneath/snathe\nante -> etna\nrest'}
+                                rows={8}
+                            />
+                            <div className="target-list-meta">
+                                <span>
+                                    {parsedTargetList.words.length} word
+                                    {parsedTargetList.words.length === 1 ? '' : 's'} ready
+                                </span>
+                                <button
+                                    type="button"
+                                    className="target-export-btn"
+                                    onClick={handleExportTargetList}
+                                    disabled={parsedTargetList.words.length === 0}
+                                >
+                                    Export to clipboard
+                                </button>
+                            </div>
+                            {exportNotice && (
+                                <p className="target-export-notice">{exportNotice}</p>
+                            )}
+                            {parsedTargetList.skipped.length > 0 && (
+                                <p className="word-trainer-setup-hint">
+                                    Skipped (short, repeats, or not in dictionary):{' '}
+                                    {parsedTargetList.skipped.slice(0, 8).join(', ')}
+                                    {parsedTargetList.skipped.length > 8 ? '…' : ''}
+                                </p>
+                            )}
+                            {errorMessage && setupTab === 'target' && (
+                                <p className="word-trainer-error">{errorMessage}</p>
+                            )}
+                            <label className="suffix-setup-toggle">
+                                <input
+                                    type="checkbox"
+                                    checked={showTargetWordTotal}
+                                    onChange={(e) => setShowTargetWordTotal(e.target.checked)}
+                                />
+                                Show total target words on board
+                            </label>
+                            <div className="board-size-options">
+                                <button
+                                    onClick={() => startTargetGame(4)}
+                                    disabled={generating || parsedTargetList.words.length === 0}
+                                >
+                                    {generating ? 'Generating…' : 'Target Trainer 4×4'}
+                                </button>
+                                <button
+                                    onClick={() => startTargetGame(5)}
+                                    disabled={generating || parsedTargetList.words.length === 0}
+                                >
+                                    {generating ? 'Generating…' : 'Target Trainer 5×5'}
+                                </button>
+                            </div>
+                            {recommendedTargets.length > 0 && (
+                                <div className="target-recommendations">
+                                    <h3>Recommended additions</h3>
+                                    <p className="word-trainer-setup-hint">
+                                        Anagrams, one-letter insertions of common letters, and
+                                        reversals — top {recommendedTargets.length} by relevance.
+                                    </p>
+                                    <div className="target-recommendation-list">
+                                        {recommendedTargets.map(({ word, score }) => (
+                                            <button
+                                                key={word}
+                                                type="button"
+                                                className="target-recommendation-chip"
+                                                onClick={() => addRecommendedWord(word)}
+                                                title={`Relevance ${score}`}
+                                            >
+                                                + {word.toLowerCase()}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
                 </div>
             </div>
         );
@@ -961,6 +1202,8 @@ function WordTrainer() {
                                     ? `Words ending in -${boardSuffix.toLowerCase()}`
                                     : gameMode === 'double' && boardDoublePair
                                     ? `Words containing ${boardDoublePair.toLowerCase()}`
+                                    : gameMode === 'target'
+                                    ? 'Target words on board'
                                     : 'All Words (4+ letters)'
                             }
                             words={sortedAnswerWords}
@@ -988,6 +1231,11 @@ function WordTrainer() {
                                 Double: <strong>{boardDoublePair.toLowerCase()}</strong>
                             </span>
                         )}
+                        {gameMode === 'target' && (
+                            <span className="word-trainer-suffix-label">
+                                Targets: <strong>{boardTargetList.length}</strong> in list
+                            </span>
+                        )}
                         {gameMode === 'suffix' ? (
                             <span>
                                 Words found: <strong>{suffixWordsFoundCount}</strong>
@@ -1000,6 +1248,13 @@ function WordTrainer() {
                                 Words found: <strong>{doubleWordsFoundCount}</strong>
                                 {showDoubleWordTotal && (
                                     <> / {maxDoubleWordCount}</>
+                                )}
+                            </span>
+                        ) : gameMode === 'target' ? (
+                            <span>
+                                Targets found: <strong>{targetWordsFoundCount}</strong>
+                                {showTargetWordTotal && (
+                                    <> / {maxTargetWordCount}</>
                                 )}
                             </span>
                         ) : (
@@ -1018,6 +1273,8 @@ function WordTrainer() {
                                     ? `Words found: ${timeUpNotice.wordsFound}`
                                     : timeUpNotice.isDouble
                                     ? `Words found: ${timeUpNotice.doubleWordsFound}`
+                                    : timeUpNotice.isTarget
+                                    ? `Targets found: ${timeUpNotice.targetWordsFound}`
                                     : `Score: ${timeUpNotice.score.toLocaleString()}`}
                             </p>
                         )}
@@ -1104,6 +1361,21 @@ function WordTrainer() {
                                     disabled={generating}
                                 >
                                     New Double 5×5
+                                </button>
+                            </>
+                        ) : gameMode === 'target' ? (
+                            <>
+                                <button
+                                    onClick={() => startTargetGame(4)}
+                                    disabled={generating}
+                                >
+                                    New Target 4×4
+                                </button>
+                                <button
+                                    onClick={() => startTargetGame(5)}
+                                    disabled={generating}
+                                >
+                                    New Target 5×5
                                 </button>
                             </>
                         ) : (

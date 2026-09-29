@@ -24,7 +24,7 @@
     display: flex;
     gap: 0;
     width: 100%;
-    max-width: 480px;
+    max-width: 560px;
     border: 2px solid #F0F0F0;
     border-radius: 8px;
     overflow: hidden;
@@ -60,8 +60,86 @@
     align-items: center;
     gap: 14px;
     width: 100%;
-    max-width: 520px;
+    max-width: 560px;
     min-height: 200px;
+}
+
+.target-list-input {
+    width: 100%;
+    max-width: 520px;
+    min-height: 140px;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border: 2px solid #F0F0F0;
+    border-radius: 8px;
+    background-color: rgba(240, 240, 240, 0.06) !important;
+    color: #F0F0F0;
+    font-size: 14px;
+    font-weight: normal;
+    line-height: 1.4;
+    resize: vertical;
+}
+
+.target-list-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    max-width: 520px;
+    font-size: 14px;
+    color: #CCCCCC;
+}
+
+.target-export-btn {
+    width: auto;
+    min-width: 0;
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+.target-export-notice {
+    margin: 0;
+    font-size: 13px;
+    color: #32cd32;
+}
+
+.target-recommendations {
+    width: 100%;
+    max-width: 520px;
+    margin-top: 8px;
+}
+
+.target-recommendations h3 {
+    margin: 0 0 6px 0;
+    font-size: 16px;
+    color: #F0F0F0;
+}
+
+.target-recommendation-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-height: 180px;
+    overflow-y: auto;
+    margin-top: 8px;
+}
+
+.target-recommendation-chip {
+    width: auto;
+    min-width: 0;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: normal;
+    border-radius: 14px;
+    background-color: rgba(200, 162, 255, 0.12);
+    border-color: #c8a2ff;
+    color: #c8a2ff;
+}
+
+.target-recommendation-chip:hover {
+    background-color: rgba(200, 162, 255, 0.25);
+    color: #e2cfff;
 }
 
 .word-trainer-setup-hint {
