@@ -46,12 +46,7 @@ export function commonLetterRatio(word) {
 }
 
 export function hasAtMostTwoOfAnyLetter(word) {
-    const counts = {};
-    for (const ch of word) {
-        counts[ch] = (counts[ch] || 0) + 1;
-        if (counts[ch] > 2) return false;
-    }
-    return true;
+    return hasAtMostNOfAnyLetter(word, 2);
 }
 
 export function isValidSeedWord(word) {
@@ -92,6 +87,7 @@ export function buildTrieAndFrequencies(text) {
     for (const line of lines) {
         const word = line.trim().toUpperCase();
         if (word.length < MIN_WORD_LENGTH) continue;
+        if (!hasAtMostNOfAnyLetter(word, MAX_SAME_LETTER_IN_WORDLIST)) continue;
 
         for (const ch of word) {
             const idx = ch.charCodeAt(0) - 65;
@@ -114,14 +110,69 @@ function cellKey(row, col) {
     return `${row},${col}`;
 }
 
-function pickWeightedLetter(weights) {
-    const total = weights.reduce((sum, w) => sum + w, 0);
+const MAX_LETTER_OCCURRENCES_ON_BOARD = 2;
+const MAX_SAME_LETTER_IN_WORDLIST = 3;
+
+export function hasAtMostNOfAnyLetter(word, maxCount) {
+    const counts = {};
+    for (const ch of word) {
+        counts[ch] = (counts[ch] || 0) + 1;
+        if (counts[ch] > maxCount) return false;
+    }
+    return true;
+}
+
+function pickWeightedLetter(weights, letterCounts = null) {
+    let total = 0;
+    for (let i = 0; i < 26; i++) {
+        const letter = String.fromCharCode(65 + i);
+        if (letterCounts && (letterCounts[letter] || 0) >= MAX_LETTER_OCCURRENCES_ON_BOARD) {
+            continue;
+        }
+        total += weights[i];
+    }
+    if (total <= 0) return null;
+
     let roll = Math.random() * total;
     for (let i = 0; i < 26; i++) {
+        const letter = String.fromCharCode(65 + i);
+        if (letterCounts && (letterCounts[letter] || 0) >= MAX_LETTER_OCCURRENCES_ON_BOARD) {
+            continue;
+        }
         roll -= weights[i];
-        if (roll <= 0) return String.fromCharCode(65 + i);
+        if (roll <= 0) return letter;
     }
-    return 'E';
+    return null;
+}
+
+function countBoardLetters(board) {
+    const counts = {};
+    for (const row of board) {
+        for (const letter of row) {
+            if (!letter) continue;
+            counts[letter] = (counts[letter] || 0) + 1;
+        }
+    }
+    return counts;
+}
+
+function hasMoreThanTwoOfAnyLetterOnBoard(board) {
+    const counts = countBoardLetters(board);
+    return Object.values(counts).some((count) => count > MAX_LETTER_OCCURRENCES_ON_BOARD);
+}
+
+function fillEmptyCells(board, weights) {
+    const counts = countBoardLetters(board);
+    for (let r = 0; r < board.length; r++) {
+        for (let c = 0; c < board[r].length; c++) {
+            if (board[r][c] !== null) continue;
+            const letter = pickWeightedLetter(weights, counts);
+            if (!letter) return false;
+            board[r][c] = letter;
+            counts[letter] = (counts[letter] || 0) + 1;
+        }
+    }
+    return true;
 }
 
 function generateRandomPath(size, length) {
@@ -185,14 +236,8 @@ function hasChainableSameLetterTriple(board) {
 }
 
 export function generateBoard(size, weights) {
-    const board = [];
-    for (let r = 0; r < size; r++) {
-        const row = [];
-        for (let c = 0; c < size; c++) {
-            row.push(pickWeightedLetter(weights));
-        }
-        board.push(row);
-    }
+    const board = Array.from({ length: size }, () => Array(size).fill(null));
+    if (!fillEmptyCells(board, weights)) return null;
     return board;
 }
 
@@ -206,6 +251,7 @@ function generateSeededBoard(size, weights, seedWords) {
     for (let attempt = 0; attempt < 25; attempt++) {
         const seedWord = seedWords[Math.floor(Math.random() * seedWords.length)];
         if (seedWord.length > maxCells) continue;
+        if (!hasAtMostTwoOfAnyLetter(seedWord)) continue;
 
         const path = generateRandomPath(size, seedWord.length);
         if (!path) continue;
@@ -216,17 +262,11 @@ function generateSeededBoard(size, weights, seedWords) {
             board[r][c] = seedWord[i];
         }
 
-        for (let r = 0; r < size; r++) {
-            for (let c = 0; c < size; c++) {
-                if (board[r][c] === null) {
-                    board[r][c] = pickWeightedLetter(weights);
-                }
-            }
-        }
+        if (!fillEmptyCells(board, weights)) continue;
+        if (hasMoreThanTwoOfAnyLetterOnBoard(board)) continue;
+        if (hasChainableSameLetterTriple(board)) continue;
 
-        if (!hasChainableSameLetterTriple(board)) {
-            return { board, seedWord };
-        }
+        return { board, seedWord };
     }
 
     return { board: generateBoard(size, weights), seedWord: null };
@@ -377,7 +417,10 @@ export function generatePlayableBoard(size, weights, trie, minScore, seedWords) 
     let best = null;
 
     for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt++) {
-        const { board, seedWord } = generateCandidateBoard(size, weights, minScore, seedWords);
+        const candidateBoard = generateCandidateBoard(size, weights, minScore, seedWords);
+        if (!candidateBoard?.board) continue;
+        const { board, seedWord } = candidateBoard;
+        if (hasMoreThanTwoOfAnyLetterOnBoard(board)) continue;
         if (hasChainableSameLetterTriple(board)) continue;
 
         const result = solveBoard(board, trie);
@@ -410,6 +453,8 @@ export function wordsEndingWithSuffix(words, suffix) {
 
 function generateSuffixBoard(size, weights, suffix) {
     const upper = suffix.toUpperCase();
+    if (!hasAtMostTwoOfAnyLetter(upper)) return null;
+
     const path = generateRandomPath(size, upper.length);
     if (!path) return null;
 
@@ -419,14 +464,7 @@ function generateSuffixBoard(size, weights, suffix) {
         board[r][c] = upper[i];
     }
 
-    for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
-            if (board[r][c] === null) {
-                board[r][c] = pickWeightedLetter(weights);
-            }
-        }
-    }
-
+    if (!fillEmptyCells(board, weights)) return null;
     return { board, suffixPath: path };
 }
 
@@ -533,14 +571,7 @@ function generateDoubleBoard(size, weights, doublePair) {
         board[r][c] = letter;
     }
 
-    for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
-            if (board[r][c] === null) {
-                board[r][c] = pickWeightedLetter(weights);
-            }
-        }
-    }
-
+    if (!fillEmptyCells(board, weights)) return null;
     return { board, doublePairPath: pair };
 }
 
@@ -552,6 +583,7 @@ export function generateDoublePlayableBoard(size, weights, trie, doublePair) {
         if (!generated) continue;
 
         const { board, doublePairPath } = generated;
+        if (hasMoreThanTwoOfAnyLetterOnBoard(board)) continue;
         if (hasChainableSameLetterTriple(board)) continue;
 
         const result = solveBoard(board, trie);
@@ -587,6 +619,7 @@ export function generateSuffixPlayableBoard(size, weights, trie, suffix) {
         if (!generated) continue;
 
         const { board, suffixPath } = generated;
+        if (hasMoreThanTwoOfAnyLetterOnBoard(board)) continue;
         if (hasChainableSameLetterTriple(board)) continue;
 
         const result = solveBoard(board, trie);
