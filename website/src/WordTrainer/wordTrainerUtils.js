@@ -665,6 +665,11 @@ const TARGET_RECOMMENDATION_LIMIT = 100;
 const REVERSE_SCORE = 100;
 const ANAGRAM_SCORE = 80;
 const INSERTION_SCORE = 50;
+const REPLACEMENT_SCORE = 60;
+const PLURAL_S_SCORE = 70;
+const ACCEPTS_S_BONUS = 25;
+
+const ALL_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 function normalizeToken(token) {
     return token.trim().toUpperCase().replace(/[^A-Z]/g, '');
@@ -801,6 +806,22 @@ export function getRecommendedTargetWords(userWords, wordSet, anagramMap, limit 
                 const inserted = word.slice(0, i) + letter + word.slice(i);
                 bump(inserted, INSERTION_SCORE);
             }
+        }
+
+        for (let i = 0; i < word.length; i++) {
+            for (const letter of ALL_LETTERS) {
+                if (letter === word[i]) continue;
+                const replaced = word.slice(0, i) + letter + word.slice(i + 1);
+                bump(replaced, REPLACEMENT_SCORE);
+            }
+        }
+
+        bump(`${word}S`, PLURAL_S_SCORE);
+    }
+
+    for (const [word, score] of [...scores.entries()]) {
+        if (wordSet.has(`${word}S`)) {
+            scores.set(word, score + ACCEPTS_S_BONUS);
         }
     }
 

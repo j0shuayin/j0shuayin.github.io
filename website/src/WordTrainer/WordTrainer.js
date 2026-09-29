@@ -1164,8 +1164,9 @@ function WordTrainer() {
                                 <div className="target-recommendations">
                                     <h3>Recommended additions</h3>
                                     <p className="word-trainer-setup-hint">
-                                        Anagrams, one-letter insertions of common letters, and
-                                        reversals — top {recommendedTargets.length} by relevance.
+                                        Anagrams, reversals, one-letter insertions/replacements,
+                                        and -s forms — top {recommendedTargets.length} by
+                                        relevance.
                                     </p>
                                     <div className="target-recommendation-list">
                                         {recommendedTargets.map(({ word, score }) => (
